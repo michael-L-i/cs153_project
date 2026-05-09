@@ -20,7 +20,9 @@ from newsletter.schemas import (
     WriterInputCreate,
     WriterPacket,
 )
+from newsletter.services.ingestion import ingest_document
 from newsletter.services.research import ResearchService
+from newsletter.services.vector import search as vector_search
 from newsletter.services.writer import build_writer_packet
 
 research_service = ResearchService()
@@ -104,6 +106,40 @@ def create_app() -> FastAPI:
         if dossier is None:
             raise HTTPException(status_code=404, detail="No dossier available for subject.")
         return dossier
+
+    @app.post("/documents/{document_id}/ingest")
+    def trigger_ingest(document_id: str, session: Session = Depends(get_db_session)) -> dict:
+        """Chunk a document and upsert its vectors into Qdrant."""
+        from newsletter.models import Document
+        doc = session.get(Document, document_id)
+        if doc is None:
+            raise HTTPException(status_code=404, detail="Document not found.")
+        count = ingest_document(document_id, session)
+        return {"document_id": document_id, "chunks_upserted": count}
+
+    @app.get("/search")
+    def semantic_search(
+        q: str,
+        subject_id: str | None = None,
+        source_type: str | None = None,
+        limit: int = 8,
+    ) -> dict:
+        """Semantic search over the founders corpus. Optionally filter by subject_id."""
+        results = vector_search(q, subject_id=subject_id, source_type=source_type, limit=limit)
+        return {
+            "query": q,
+            "results": [
+                {
+                    "chunk_id": r.chunk_id,
+                    "score": r.score,
+                    "text": r.text,
+                    "subject_id": r.subject_id,
+                    "source_type": r.source_type,
+                    "source_url": r.source_url,
+                }
+                for r in results
+            ],
+        }
 
     @app.post("/writer-inputs", response_model=WriterPacket)
     def create_writer_inputs(payload: WriterInputCreate, session: Session = Depends(get_db_session)) -> WriterPacket:

@@ -16,6 +16,7 @@ dependencies = [
   "python-dateutil>=2.9.0,<3",
   "sqlalchemy>=2.0.37,<3",
   "uvicorn>=0.34.0,<1",
+  "qdrant-client>=1.9.0,<2",
 ]
 
 [project.optional-dependencies]

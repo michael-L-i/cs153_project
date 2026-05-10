@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     qdrant_api_key: str | None = Field(default=None, alias="QDRANT_API_KEY")
     qdrant_collection: str = Field(default="founders", alias="QDRANT_COLLECTION")
 
+    exa_api_key: str | None = Field(default=None, alias="EXA_API_KEY")
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 

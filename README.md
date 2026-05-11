@@ -1,121 +1,141 @@
 # FIRSTHAND — Founder Research & Newsletter Platform
 
-An editorial system for researching, storing, and publishing long-form founder case studies. The end goal is a directory of founders that people can read about — and eventually converse with as a "virtual founder" persona trained on their public record.
+A growing directory of founders, each one a self-contained knowledge sandbox. The system scrapes public content, embeds it into a vector database, and serves it to LLM-powered skills that can answer questions, write newsletters, generate case studies, and eventually power a conversational "virtual founder" experience.
 
-The research layer is the source of truth. Downstream agents write newsletters, generate case studies, and eventually power the chat experience from structured research outputs.
+The research pipeline is the foundation. Everything else — newsletters, Q&A, chat — runs on top of it.
 
-## Vision and architecture
+## The founder sandbox model
+
+Every founder is a completely isolated knowledge unit keyed by `founder_id`. All their data — scraped articles, YouTube transcripts, embeddings — is scoped to that ID and never mixes with other founders.
 
 ```
-YouTube / Web / PDFs / Transcripts
-        ↓
-   LlamaIndex  (parsing, chunking, ingestion)
-        ↓
-  Voyage AI voyage-3-large  (embedding API — retrieval-optimized)
-        ↓
-    Qdrant Cloud  (vector storage + filtered search)
-        ↓
-   Supabase / Postgres  (founder directory, sources, metadata)
-
-         ↕  phase 2 — chat
-           Mem0  (persistent memory layer — fact extraction, long-term recall)
-
-         ↕  phase 3 — relational depth
-       Graphiti / Neo4j  (knowledge graph — people, companies, events, investors)
+founder_id
+  ├── sources       every URL discovered and scraped
+  ├── documents     normalized text per source
+  ├── chunks        sentence-window splits, ready for retrieval
+  └── vectors       chunks embedded in Qdrant, filterable by founder_id
 ```
 
-### Why each layer
+Adding a founder is one command. The rest is automatic.
 
-| Layer | Tool | Reason |
-|---|---|---|
-| Parsing & ingestion | LlamaIndex | Handles PDFs, YouTube transcripts, HTML natively. Most mature RAG-first framework. |
-| Embedding | Voyage AI `voyage-3-large` | Retrieval-optimized, leads MTEB retrieval benchmarks, asymmetric query/doc mode |
-| Vector search | Qdrant Cloud | Best filtered search (e.g. search within a single founder's corpus), open source |
-| Structured data | Supabase (Postgres) | Founder directory, source URLs, metadata, tags — relational data belongs here |
-| Memory (chat) | Mem0 | Extracts discrete facts from conversations, handles long-term recall across sessions |
-| Knowledge graph | Graphiti | Temporal knowledge graphs for AI agents; encodes founder → company → investor relationships |
+## How skills work
 
-### Chunking strategy
+Skills are functions that take a `founder_id` and return generated output. They always follow the same pattern:
 
-Retrieval quality depends as much on chunking as on embedding model choice.
+```
+query / task
+    ↓
+embed the query (ZeroEntropy)
+    ↓
+retrieve top-k relevant chunks from Qdrant, filtered by founder_id
+    ↓
+pass chunks + prompt to LLM (Claude)
+    ↓
+answer / newsletter / case study
+```
 
-- **YouTube transcripts**: sentence-boundary chunks, 250–350 tokens, 40-token overlap
-- **PDFs / long-form articles**: recursive paragraph → sentence, 400–600 tokens, 80-token overlap
-- **All chunks store**: `founder_id`, `source_url`, `source_type`, `scraped_at`, `timestamp_in_video`
+The LLM does all interpretation. The vector store does retrieval. No rule-based extraction in between.
 
-The `founder_id` metadata field is what enables Qdrant filtered search — queries scoped to one person's corpus rather than the full index.
+Skills planned:
+- `ask(founder_id, question)` — Q&A about a specific founder
+- `write_newsletter(founder_id)` — long-form newsletter from their story
+- `write_case_study(founder_id)` — structured PDF-ready case study
+- `chat(founder_id, message)` — conversational interface (phase 2)
 
-### Phased build plan
+## Architecture
 
-**Phase 1 — Ingestion + retrieval (current focus)**
-LlamaIndex parses scraped content → Voyage AI embeds → Qdrant stores with metadata → Supabase holds the directory. Query: "find everything in the knowledge base about how Mira talked about her first hire."
+```
+YouTube / Web / Articles
+        ↓
+   Exa neural search        URL discovery
+        ↓
+   Firecrawl / httpx        web scraping  (+ youtube-transcript-api for video)
+        ↓
+   Custom sentence chunker  300 tok / 40 overlap for transcripts
+                            500 tok / 80 overlap for articles
+        ↓
+   ZeroEntropy zembed-1     embedding (2560-dim, asymmetric query/doc)
+        ↓
+   Qdrant Cloud             vector store, one collection, filtered by founder_id
+        ↓
+   SQLite / Postgres        provenance ledger (subjects, sources, documents, chunks)
 
-**Phase 2 — Chat / virtual founder**
-Drop Mem0 on top of the existing stack. Conversations extract persistent facts per founder. The system accumulates memory across sessions without ballooning token costs.
+         ↕  phase 2
+       Mem0                 persistent memory for conversational chat
 
-**Phase 3 — Relational depth**
-Add Graphiti. Build the graph: `Mira → worked at → Company X → knows → Investor Y`. Enables multi-hop reasoning: "find founders in the directory who share background patterns with Mira."
-
----
-
-## Current implementation (phase 1, research layer)
-
-The current implementation is intentionally research-first:
-
-- ingest one founder/company target at a time
-- discover and normalize source material
-- extract claims, events, and quotes with provenance
-- assemble a structured dossier
-- expose a separate writer-input contract for downstream newsletter agents
-
-## Current shape
-
-- `FastAPI` app with a local-first setup
-- `SQLAlchemy` data model for subjects, sources, artifacts, documents, chunks, claims, events, quotes, dossiers, and jobs
-- in-process research job runner with explicit stages
-- source adapter interface plus initial web/YouTube/X adapters
-- filesystem object storage for raw artifacts
-- dossier and writer-packet assembly
-
-The external source integrations are scaffolded to prefer official APIs where configured, while still supporting local development without them.
+         ↕  phase 3
+       Graphiti / Neo4j     knowledge graph for relational queries across founders
+```
 
 ## Quickstart
 
+### Add a founder
+
 ```bash
 uv sync
+uv run python -m newsletter.cli research "Paul Graham" "founder of Y Combinator"
+```
+
+This runs the full pipeline: discover URLs → scrape → chunk → embed → upsert to Qdrant. Takes 1–3 minutes depending on how many sources Exa finds.
+
+### Run the API server
+
+```bash
 uv run uvicorn newsletter.main:app --reload
 ```
 
-The app will create the configured database tables on startup.
+Then search semantically:
 
-Default local configuration uses SQLite and a filesystem object store under `./var/object-store`.
+```bash
+curl 'http://localhost:8000/search?q=how+did+he+find+the+first+customers&subject_id=<founder_id>'
+```
+
+### Local Postgres + MinIO (optional, for production-like local dev)
+
+```bash
+docker compose up -d
+# then set DATABASE_URL=postgresql+psycopg2://newsletter:newsletter@localhost:5432/newsletter in .env
+```
 
 ## Environment
 
-Copy `.env.example` to `.env` and adjust as needed.
+Copy `.env.example` to `.env` and fill in:
 
-Important variables:
-
-- `DATABASE_URL`
-- `OBJECT_STORE_ROOT`
-- `DEFAULT_RESEARCH_JOB_MODE` (`background` or `inline`)
-- `FIRECRAWL_API_KEY`
-- `YOUTUBE_API_KEY`
-- `X_BEARER_TOKEN`
+| Variable | Required | Description |
+|---|---|---|
+| `EXA_API_KEY` | yes | Neural search for URL discovery |
+| `FIRECRAWL_API_KEY` | recommended | Clean markdown scraping; falls back to httpx |
+| `ZEROENTROPY_API_KEY` | yes | Embedding via ZeroEntropy `zembed-1` |
+| `QDRANT_URL` | yes | Qdrant Cloud or self-hosted |
+| `QDRANT_API_KEY` | yes (cloud) | Not required for local Qdrant |
+| `QDRANT_COLLECTION` | no | Defaults to `founders` |
+| `DATABASE_URL` | no | Defaults to `sqlite:///./newsletter.db` |
+| `OBJECT_STORE_ROOT` | no | Defaults to `./var/object-store` |
+| `DEFAULT_RESEARCH_JOB_MODE` | no | `background` or `inline` (default: `background`) |
 
 ## API surface
 
-- `POST /subjects`
-- `POST /research-jobs`
-- `GET /research-jobs/{job_id}`
-- `GET /subjects/{subject_id}/sources`
-- `GET /subjects/{subject_id}/timeline`
-- `GET /subjects/{subject_id}/dossier`
-- `POST /writer-inputs`
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/healthz` | Health check |
+| `POST` | `/subjects` | Create a founder subject |
+| `POST` | `/research-jobs` | Trigger a research job via the API |
+| `GET` | `/research-jobs/{job_id}` | Poll job status |
+| `GET` | `/subjects/{subject_id}/sources` | List all sources for a founder |
+| `GET` | `/subjects/{subject_id}/dossier` | Assembled dossier (from API job path) |
+| `GET` | `/search` | Semantic search (`?q=...&subject_id=...&limit=8`) |
+| `POST` | `/documents/{document_id}/ingest` | Manually re-chunk and embed a document |
+| `POST` | `/writer-inputs` | Build a writer packet from a founder's dossier |
 
-## Notes
+## What is built vs what is next
 
-- v1 optimizes for evidence-backed research records over perfect extraction quality.
-- The writer is treated as a separate consumer of the dossier contract.
-- Retrieval is modeled around canonical chunks, claims, events, and quotes rather than a single monolithic blob.
+**Built:**
+- Full ingestion pipeline (CLI + API)
+- Semantic search scoped by `founder_id`
+- SQLite/Postgres provenance ledger
+- Static editorial frontend (`web/`)
 
+**Next:**
+- LLM skill layer (`ask`, `write_newsletter`, `write_case_study`)
+- Batch ingest script for multiple founders
+- Production deployment (Supabase Postgres + hosted FastAPI)

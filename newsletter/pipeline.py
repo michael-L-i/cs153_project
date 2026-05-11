@@ -1,13 +1,13 @@
 """
-Consolidated research pipeline.
+Founder research pipeline.
 
 Input:  founder name + optional context string
-Output: chunked, embedded knowledge base in Qdrant
+Output: chunks embedded in Qdrant, provenance in SQLite/Postgres
 
 Stages:
-  1. Find or create subject in Postgres
+  1. Find or create subject
   2. Discover URLs via Exa neural search
-  3. Fetch each source (transcript or article)
+  3. Fetch each source (Firecrawl for web, youtube-transcript-api for video)
   4. Normalize to clean text
   5. Chunk → embed → upsert to Qdrant
 """
@@ -86,7 +86,7 @@ def run(name: str, context: str = "", *, verbose: bool = True) -> dict:
             log(f"\nFound existing subject: {name}  (id: {subject.id[:8]}…)")
 
         # ── 2. Discover URLs via Exa ───────────────────────────────────────
-        log(f"\n[1/3] Discovering sources for {name}…")
+        log(f"\n[1/4] Discovering sources for {name}…")
 
         existing_urls = {
             s.url
@@ -128,7 +128,7 @@ def run(name: str, context: str = "", *, verbose: bool = True) -> dict:
 
         log(f"\n[2/3] Processing {len(pending)} pending sources…\n")
 
-        stats = {"discovered": len(discovered), "processed": 0, "failed": 0, "chunks": 0}
+        stats: dict = {"discovered": len(discovered), "processed": 0, "failed": 0, "chunks": 0}
 
         for source in pending:
             adapter = _adapter_for(source.platform)

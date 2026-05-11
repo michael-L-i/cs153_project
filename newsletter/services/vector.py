@@ -16,11 +16,12 @@ from typing import Any
 
 from zeroentropy import ZeroEntropy
 from qdrant_client import QdrantClient
-from qdrant_client.http.models import (
+from qdrant_client.models import (
     Distance,
     Filter,
     FieldCondition,
     MatchValue,
+    PayloadSchemaType,
     PointStruct,
     VectorParams,
 )
@@ -77,7 +78,7 @@ def _qdrant_client() -> QdrantClient:
 
 
 def ensure_collection() -> None:
-    """Create the Qdrant collection if it doesn't exist yet."""
+    """Create the Qdrant collection and payload indexes if they don't exist yet."""
     settings = get_settings()
     client = _qdrant_client()
     existing = {c.name for c in client.get_collections().collections}
@@ -87,6 +88,15 @@ def ensure_collection() -> None:
             vectors_config=VectorParams(size=EMBEDDING_DIM, distance=Distance.COSINE),
         )
         logger.info("Created Qdrant collection '%s'", settings.qdrant_collection)
+
+    # Ensure payload indexes exist (idempotent — Qdrant ignores duplicate creates)
+    for field in ("subject_id", "source_type", "source_id"):
+        client.create_payload_index(
+            collection_name=settings.qdrant_collection,
+            field_name=field,
+            field_schema=PayloadSchemaType.KEYWORD,
+        )
+    logger.info("Payload indexes ensured for collection '%s'", settings.qdrant_collection)
 
 
 def embed_documents(texts: list[str]) -> list[list[float]]:
@@ -170,14 +180,14 @@ def search(
 
     settings = get_settings()
     client = _qdrant_client()
-    hits = client.search(
+    hits = client.query_points(
         collection_name=settings.qdrant_collection,
-        query_vector=vector,
+        query=vector,
         query_filter=query_filter,
         limit=limit,
         score_threshold=score_threshold,
         with_payload=True,
-    )
+    ).points
 
     return [
         SearchResult(

@@ -14,6 +14,13 @@ class Settings(BaseSettings):
     youtube_api_key: str | None = Field(default=None, alias="YOUTUBE_API_KEY")
     x_bearer_token: str | None = Field(default=None, alias="X_BEARER_TOKEN")
 
+    zeroentropy_api_key: str | None = Field(default=None, alias="ZEROENTROPY_API_KEY")
+    qdrant_url: str | None = Field(default=None, alias="QDRANT_URL")
+    qdrant_api_key: str | None = Field(default=None, alias="QDRANT_API_KEY")
+    qdrant_collection: str = Field(default="founders", alias="QDRANT_COLLECTION")
+
+    exa_api_key: str | None = Field(default=None, alias="EXA_API_KEY")
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 

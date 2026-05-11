@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import json
 from urllib.parse import parse_qs, urlparse
 
 import httpx
-from bs4 import BeautifulSoup
+from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api._errors import NoTranscriptFound, TranscriptsDisabled
 
 from newsletter.adapters.base import AdapterUnavailable, DiscoveredSource, FetchedArtifact, NormalizedDocument
-from newsletter.config import get_settings
 from newsletter.enums import DocumentKind, SourcePlatform, TrustTier
 from newsletter.models import Source, Subject
 
@@ -20,56 +21,115 @@ def _extract_video_id(url: str) -> str | None:
     return None
 
 
+def _fetch_video_metadata(video_id: str) -> dict:
+    """Fetch title and author from YouTube oEmbed — no API key required."""
+    try:
+        resp = httpx.get(
+            "https://www.youtube.com/oembed",
+            params={"url": f"https://www.youtube.com/watch?v={video_id}", "format": "json"},
+            timeout=15,
+        )
+        if resp.status_code == 200:
+            return resp.json()
+    except Exception:
+        pass
+    return {}
+
+
+def _transcript_to_text(transcript: list[dict]) -> str:
+    """Join transcript segments into readable paragraphs (~60s each)."""
+    lines = []
+    buffer: list[str] = []
+    buffer_duration = 0.0
+
+    for segment in transcript:
+        text = segment.get("text", "").strip().replace("\n", " ")
+        duration = segment.get("duration", 0.0)
+        if not text:
+            continue
+        buffer.append(text)
+        buffer_duration += duration
+        if buffer_duration >= 60:
+            lines.append(" ".join(buffer))
+            buffer = []
+            buffer_duration = 0.0
+
+    if buffer:
+        lines.append(" ".join(buffer))
+
+    return "\n\n".join(lines)
+
+
 class YouTubeAdapter:
     platform = SourcePlatform.youtube.value
 
     def discover(self, subject: Subject) -> list[DiscoveredSource]:
         discovered: list[DiscoveredSource] = []
         for url in subject.youtube_urls:
+            video_id = _extract_video_id(url)
+            meta = _fetch_video_metadata(video_id) if video_id else {}
             discovered.append(
                 DiscoveredSource(
                     platform=self.platform,
-                    source_type="youtube_video",
+                    source_type="youtube_transcript",
                     url=url,
                     trust_tier=TrustTier.primary.value,
-                    metadata_json={"video_id": _extract_video_id(url), "seeded": True},
+                    title=meta.get("title"),
+                    author=meta.get("author_name"),
+                    metadata_json={"video_id": video_id, "seeded": True},
                 )
             )
         return discovered
 
     def fetch_source(self, source: Source) -> FetchedArtifact:
-        settings = get_settings()
-        if settings.youtube_api_key:
-            response = httpx.get(source.url, follow_redirects=True, timeout=20.0)
-        else:
-            response = httpx.get(source.url, follow_redirects=True, timeout=20.0)
-        response.raise_for_status()
+        video_id = source.metadata_json.get("video_id") or _extract_video_id(source.url)
+        if not video_id:
+            raise AdapterUnavailable(f"Cannot extract video ID from URL: {source.url}")
+
+        ytt = YouTubeTranscriptApi()
+        try:
+            transcript = ytt.fetch(video_id)
+        except TranscriptsDisabled:
+            raise AdapterUnavailable(f"Transcripts are disabled for video {video_id}")
+        except NoTranscriptFound:
+            try:
+                transcript_list = ytt.list(video_id)
+                generated = transcript_list.find_generated_transcript(["en"])
+                transcript = generated.fetch()
+            except Exception:
+                raise AdapterUnavailable(f"No transcript available for video {video_id}")
+        except Exception as exc:
+            raise AdapterUnavailable(f"Transcript fetch failed for {video_id}: {exc}")
+
+        payload = json.dumps(
+            [{"text": s.text, "start": s.start, "duration": s.duration} for s in transcript],
+            ensure_ascii=False,
+        ).encode()
         return FetchedArtifact(
-            artifact_type="youtube_watch_html",
-            media_type="text/html",
-            payload=response.content,
-            metadata_json={"video_id": source.metadata_json.get("video_id")},
+            artifact_type="youtube_transcript",
+            media_type="application/json",
+            payload=payload,
+            metadata_json={"video_id": video_id, "segment_count": len(transcript)},
         )
 
     def normalize(self, source: Source, artifact: FetchedArtifact) -> NormalizedDocument:
-        soup = BeautifulSoup(artifact.payload.decode("utf-8", errors="ignore"), "html.parser")
-        title = source.title or (
-            soup.title.string.replace("- YouTube", "").strip() if soup.title and soup.title.string else source.url
-        )
-        description = ""
-        meta = soup.find("meta", attrs={"name": "description"})
-        if meta and meta.get("content"):
-            description = meta["content"].strip()
+        transcript = json.loads(artifact.payload.decode())
+        content_text = _transcript_to_text(transcript)
 
-        if not description:
-            raise AdapterUnavailable("YouTube page fetched but no extractable transcript or description was found.")
+        if not content_text.strip():
+            raise AdapterUnavailable("Transcript was empty after processing.")
 
-        content_markdown = f"# {title}\n\n{description}"
+        video_id = source.metadata_json.get("video_id", "")
+        title = source.title or f"YouTube Video {video_id}"
+        content_markdown = f"# {title}\n\n{content_text}"
+
         return NormalizedDocument(
             kind=DocumentKind.transcript.value,
             title=title,
             content_markdown=content_markdown,
-            content_text=description,
-            metadata_json={"video_id": source.metadata_json.get("video_id")},
+            content_text=content_text,
+            metadata_json={
+                "video_id": video_id,
+                "segment_count": artifact.metadata_json.get("segment_count", 0),
+            },
         )
-

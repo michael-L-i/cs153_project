@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from newsletter.adapters.base import AdapterUnavailable
+from newsletter.adapters.exa_discovery import discover_via_exa
 from newsletter.adapters.web import WebAdapter
 from newsletter.adapters.x_adapter import XAdapter
 from newsletter.adapters.youtube import YouTubeAdapter
@@ -18,8 +22,8 @@ from newsletter.services.extraction import (
     extract_claim_payloads,
     extract_event_payloads,
     extract_quote_payloads,
-    split_text_into_chunks,
 )
+from newsletter.services.ingestion import ingest_document
 from newsletter.storage.object_store import FilesystemObjectStore
 
 
@@ -57,6 +61,7 @@ class ResearchService:
             self._discover_sources(session, subject, stats)
             self._fetch_sources(session, subject, job, stats)
             self._normalize_sources(session, subject, job)
+            self._ingest_documents(session, subject, job)
             self._extract_documents(session, subject, job)
 
             job.stage = ResearchJobStage.resolve.value
@@ -96,25 +101,33 @@ class ResearchService:
             (source.platform, source.url)
             for source in session.scalars(select(Source).where(Source.subject_id == subject.id)).all()
         }
-        for platform, adapter in self.adapter_registry.items():
-            for discovered in adapter.discover(subject):
-                source_key = (platform, discovered.url)
-                if source_key in known_urls:
-                    continue
-                session.add(
-                    Source(
-                        subject_id=subject.id,
-                        platform=discovered.platform,
-                        source_type=discovered.source_type,
-                        url=discovered.url,
-                        trust_tier=discovered.trust_tier,
-                        title=discovered.title,
-                        author=discovered.author,
-                        metadata_json=discovered.metadata_json,
-                    )
+
+        # seeded adapter discovery (youtube_urls + canonical_urls + x_handles)
+        all_discovered = []
+        for adapter in self.adapter_registry.values():
+            all_discovered.extend(adapter.discover(subject))
+
+        # autonomous discovery via Exa neural search
+        all_discovered.extend(discover_via_exa(subject))
+
+        for discovered in all_discovered:
+            source_key = (discovered.platform, discovered.url)
+            if source_key in known_urls:
+                continue
+            session.add(
+                Source(
+                    subject_id=subject.id,
+                    platform=discovered.platform,
+                    source_type=discovered.source_type,
+                    url=discovered.url,
+                    trust_tier=discovered.trust_tier,
+                    title=discovered.title,
+                    author=discovered.author,
+                    metadata_json=discovered.metadata_json,
                 )
-                known_urls.add(source_key)
-                stats["sources_discovered"] += 1
+            )
+            known_urls.add(source_key)
+            stats["sources_discovered"] += 1
         session.commit()
 
     def _fetch_sources(self, session: Session, subject: Subject, job: ResearchJob, stats: dict[str, int]) -> None:
@@ -187,8 +200,6 @@ class ResearchService:
                 )
                 session.add(document)
                 session.flush()
-                for ordinal, text in enumerate(split_text_into_chunks(normalized.content_text), start=1):
-                    session.add(Chunk(document_id=document.id, ordinal=ordinal, text=text, metadata_json={}))
                 source.title = normalized.title
                 source.status = SourceStatus.normalized.value
                 source.last_error = None
@@ -199,6 +210,20 @@ class ResearchService:
                 source.status = SourceStatus.failed.value
                 source.last_error = str(exc)
             session.commit()
+
+    def _ingest_documents(self, session: Session, subject: Subject, job: ResearchJob) -> None:
+        """Chunk all normalized documents and upsert vectors into Qdrant."""
+        job.stage = ResearchJobStage.extract.value  # reuse stage slot; ingest runs before extract
+        session.commit()
+        sources = session.scalars(select(Source).where(Source.subject_id == subject.id)).all()
+        for source in sources:
+            if source.status != SourceStatus.normalized.value:
+                continue
+            for document in source.documents:
+                try:
+                    ingest_document(document.id, session)
+                except Exception:
+                    logger.exception("Vector ingestion failed for document %s", document.id)
 
     def _extract_documents(self, session: Session, subject: Subject, job: ResearchJob) -> None:
         job.stage = ResearchJobStage.extract.value

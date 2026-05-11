@@ -16,6 +16,10 @@ dependencies = [
   "python-dateutil>=2.9.0,<3",
   "sqlalchemy>=2.0.37,<3",
   "uvicorn>=0.34.0,<1",
+  "qdrant-client>=1.9.0,<2",
+  "youtube-transcript-api>=0.6.0",
+  "exa-py>=1.0.0",
+  "zeroentropy>=0.1.0a11",
 ]
 
 [project.optional-dependencies]

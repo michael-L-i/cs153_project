@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     youtube_api_key: str | None = Field(default=None, alias="YOUTUBE_API_KEY")
     x_bearer_token: str | None = Field(default=None, alias="X_BEARER_TOKEN")
 
-    voyage_api_key: str | None = Field(default=None, alias="VOYAGE_API_KEY")
+    zeroentropy_api_key: str | None = Field(default=None, alias="ZEROENTROPY_API_KEY")
     qdrant_url: str | None = Field(default=None, alias="QDRANT_URL")
     qdrant_api_key: str | None = Field(default=None, alias="QDRANT_API_KEY")
     qdrant_collection: str = Field(default="founders", alias="QDRANT_COLLECTION")

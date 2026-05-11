@@ -1,8 +1,8 @@
 """
-Embedding and vector search via Voyage AI + Qdrant.
+Embedding and vector search via ZeroEntropy (zembed-1) + Qdrant.
 
 Responsibilities:
-- Embed text using Voyage AI voyage-3 (retrieval-optimized)
+- Embed text using ZeroEntropy zembed-1 (retrieval-optimized, asymmetric)
 - Upsert chunks into Qdrant with founder/source metadata as payload
 - Search by semantic similarity, optionally filtered to one founder
 - Ensure the Qdrant collection exists on first use
@@ -14,7 +14,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-import httpx
+from zeroentropy import ZeroEntropy
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import (
     Distance,
@@ -29,10 +29,9 @@ from newsletter.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-# voyage-3 produces 1024-dimensional vectors
-EMBEDDING_DIM = 1024
-VOYAGE_EMBED_URL = "https://api.voyageai.com/v1/embeddings"
-VOYAGE_MODEL = "voyage-3"
+# zembed-1 default dimension
+EMBEDDING_DIM = 2560
+EMBED_MODEL = "zembed-1"
 
 
 @dataclass
@@ -47,22 +46,27 @@ class SearchResult:
     metadata: dict[str, Any]
 
 
-def _voyage_embed(texts: list[str], input_type: str) -> list[list[float]]:
-    """Call Voyage AI embeddings API. input_type is 'document' or 'query'."""
+def _ze_client() -> ZeroEntropy:
     settings = get_settings()
-    if not settings.voyage_api_key:
-        raise RuntimeError("VOYAGE_API_KEY is not set")
+    if not settings.zeroentropy_api_key:
+        raise RuntimeError("ZEROENTROPY_API_KEY is not set")
+    return ZeroEntropy(api_key=settings.zeroentropy_api_key)
 
-    response = httpx.post(
-        VOYAGE_EMBED_URL,
-        headers={"Authorization": f"Bearer {settings.voyage_api_key}"},
-        json={"model": VOYAGE_MODEL, "input": texts, "input_type": input_type},
-        timeout=60,
-    )
-    response.raise_for_status()
-    data = response.json()
-    # API returns [{object, embedding, index}, ...] sorted by index
-    return [item["embedding"] for item in sorted(data["data"], key=lambda x: x["index"])]
+
+def _embed(texts: list[str], input_type: str) -> list[list[float]]:
+    """Embed a batch of texts. input_type is 'document' or 'query'."""
+    client = _ze_client()
+    vectors = []
+    for text in texts:
+        response = client.models.embed(
+            model=EMBED_MODEL,
+            input_type=input_type,
+            input=text,
+            dimensions=EMBEDDING_DIM,
+            encoding_format="float",
+        )
+        vectors.append(response.results[0].embedding)
+    return vectors
 
 
 def _qdrant_client() -> QdrantClient:
@@ -86,13 +90,13 @@ def ensure_collection() -> None:
 
 
 def embed_documents(texts: list[str]) -> list[list[float]]:
-    """Embed a batch of document chunks (asymmetric — document side)."""
-    return _voyage_embed(texts, input_type="document")
+    """Embed document chunks (asymmetric — document side)."""
+    return _embed(texts, input_type="document")
 
 
 def embed_query(text: str) -> list[float]:
     """Embed a search query (asymmetric — query side)."""
-    return _voyage_embed([text], input_type="query")[0]
+    return _embed([text], input_type="query")[0]
 
 
 def upsert_chunks(chunks: list[dict[str, Any]]) -> int:
@@ -116,7 +120,7 @@ def upsert_chunks(chunks: list[dict[str, Any]]) -> int:
     settings = get_settings()
     texts = [c["text"] for c in chunks]
 
-    logger.info("Embedding %d chunks via Voyage AI", len(texts))
+    logger.info("Embedding %d chunks via ZeroEntropy", len(texts))
     vectors = embed_documents(texts)
 
     points = []
@@ -128,7 +132,6 @@ def upsert_chunks(chunks: list[dict[str, Any]]) -> int:
             "source_type": chunk["source_type"],
             "source_url": chunk["source_url"],
         }
-        # pass through any extra metadata (e.g. timestamp_seconds, ordinal)
         for key in chunk:
             if key not in ("id", "text", "subject_id", "source_id", "source_type", "source_url"):
                 payload[key] = chunk[key]
@@ -155,7 +158,6 @@ def search(
     Pass subject_id to scope the search to one founder.
     Pass source_type to filter by e.g. 'youtube_transcript' or 'web'.
     """
-    settings = get_settings()
     vector = embed_query(query)
 
     conditions = []
@@ -166,6 +168,7 @@ def search(
 
     query_filter = Filter(must=conditions) if conditions else None
 
+    settings = get_settings()
     client = _qdrant_client()
     hits = client.search(
         collection_name=settings.qdrant_collection,
@@ -176,20 +179,19 @@ def search(
         with_payload=True,
     )
 
-    results = []
-    for hit in hits:
-        p = hit.payload or {}
-        results.append(
-            SearchResult(
-                chunk_id=str(hit.id),
-                score=hit.score,
-                text=p.get("text", ""),
-                subject_id=p.get("subject_id", ""),
-                source_id=p.get("source_id", ""),
-                source_type=p.get("source_type", ""),
-                source_url=p.get("source_url", ""),
-                metadata={k: v for k, v in p.items() if k not in ("text", "subject_id", "source_id", "source_type", "source_url")},
-            )
+    return [
+        SearchResult(
+            chunk_id=str(hit.id),
+            score=hit.score,
+            text=(hit.payload or {}).get("text", ""),
+            subject_id=(hit.payload or {}).get("subject_id", ""),
+            source_id=(hit.payload or {}).get("source_id", ""),
+            source_type=(hit.payload or {}).get("source_type", ""),
+            source_url=(hit.payload or {}).get("source_url", ""),
+            metadata={
+                k: v for k, v in (hit.payload or {}).items()
+                if k not in ("text", "subject_id", "source_id", "source_type", "source_url")
+            },
         )
-
-    return results
+        for hit in hits
+    ]

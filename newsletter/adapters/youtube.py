@@ -86,13 +86,14 @@ class YouTubeAdapter:
         if not video_id:
             raise AdapterUnavailable(f"Cannot extract video ID from URL: {source.url}")
 
+        ytt = YouTubeTranscriptApi()
         try:
-            transcript = YouTubeTranscriptApi.get_transcript(video_id)
+            transcript = ytt.fetch(video_id)
         except TranscriptsDisabled:
             raise AdapterUnavailable(f"Transcripts are disabled for video {video_id}")
         except NoTranscriptFound:
             try:
-                transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+                transcript_list = ytt.list(video_id)
                 generated = transcript_list.find_generated_transcript(["en"])
                 transcript = generated.fetch()
             except Exception:
@@ -100,7 +101,10 @@ class YouTubeAdapter:
         except Exception as exc:
             raise AdapterUnavailable(f"Transcript fetch failed for {video_id}: {exc}")
 
-        payload = json.dumps(transcript, ensure_ascii=False).encode()
+        payload = json.dumps(
+            [{"text": s.text, "start": s.start, "duration": s.duration} for s in transcript],
+            ensure_ascii=False,
+        ).encode()
         return FetchedArtifact(
             artifact_type="youtube_transcript",
             media_type="application/json",

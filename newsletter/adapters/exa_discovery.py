@@ -71,8 +71,7 @@ def discover_via_exa(subject: Subject, num_results_per_query: int = 5) -> list[D
             results = exa.search(
                 query,
                 num_results=num_results_per_query,
-                type="neural",
-                use_autoprompt=True,
+                type="auto",
             )
             for r in results.results:
                 url = r.url

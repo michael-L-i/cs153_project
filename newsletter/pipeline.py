@@ -122,7 +122,7 @@ def run(name: str, context: str = "", *, verbose: bool = True) -> dict:
         pending = session.scalars(
             select(Source).where(
                 Source.subject_id == subject.id,
-                Source.status == SourceStatus.discovered.value,
+                Source.status.in_([SourceStatus.discovered.value, SourceStatus.normalized.value]),
             )
         ).all()
 
@@ -135,6 +135,17 @@ def run(name: str, context: str = "", *, verbose: bool = True) -> dict:
             label = (source.title or source.url)[:72]
 
             try:
+                # if already normalized, skip fetch+normalize and go straight to ingest
+                if source.status == SourceStatus.normalized.value and source.documents:
+                    doc = source.documents[-1]
+                    chunk_count = ingest_document(doc.id, session)
+                    source.status = SourceStatus.processed.value
+                    session.commit()
+                    stats["processed"] += 1
+                    stats["chunks"] += chunk_count
+                    log(f"  ✓  {label}  ({chunk_count} chunks)")
+                    continue
+
                 # fetch
                 artifact = adapter.fetch_source(source)
                 key = _object_key(subject.id, source.id, artifact.artifact_type, artifact.media_type)

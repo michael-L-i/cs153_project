@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
-from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -27,29 +26,17 @@ from newsletter.adapters.web import WebAdapter
 from newsletter.adapters.youtube import YouTubeAdapter
 from newsletter.db import create_db_and_tables, get_session_factory
 from newsletter.enums import SourcePlatform, SourceStatus
-from newsletter.models import Artifact, Document, Source, Subject
+from newsletter.models import Document, Source, Subject
 from newsletter.services.ingestion import ingest_document
-from newsletter.storage.object_store import FilesystemObjectStore
 
 logger = logging.getLogger(__name__)
 
 _web = WebAdapter()
 _youtube = YouTubeAdapter()
-_store = FilesystemObjectStore()
 
 
 def _adapter_for(platform: str):
     return _youtube if platform == SourcePlatform.youtube.value else _web
-
-
-def _object_key(subject_id: str, source_id: str, artifact_type: str, media_type: str) -> str:
-    ext = {
-        "text/html": "html",
-        "application/json": "json",
-        "text/markdown": "md",
-        "text/plain": "txt",
-    }.get(media_type, "bin")
-    return str(Path(subject_id) / source_id / f"{artifact_type}.{ext}")
 
 
 def run(name: str, context: str = "", *, verbose: bool = True) -> dict:
@@ -148,19 +135,6 @@ def run(name: str, context: str = "", *, verbose: bool = True) -> dict:
 
                 # fetch
                 artifact = adapter.fetch_source(source)
-                key = _object_key(subject.id, source.id, artifact.artifact_type, artifact.media_type)
-                stored = _store.put_bytes(key, artifact.payload)
-                session.add(
-                    Artifact(
-                        source_id=source.id,
-                        artifact_type=artifact.artifact_type,
-                        object_key=stored.object_key,
-                        media_type=artifact.media_type,
-                        byte_size=stored.byte_size,
-                        checksum=stored.checksum,
-                        metadata_json=artifact.metadata_json,
-                    )
-                )
                 source.status = SourceStatus.fetched.value
                 source.fetched_at = datetime.now(UTC)
                 session.commit()

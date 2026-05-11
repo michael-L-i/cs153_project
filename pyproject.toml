@@ -20,6 +20,7 @@ dependencies = [
   "youtube-transcript-api>=0.6.0",
   "exa-py>=1.0.0",
   "zeroentropy>=0.1.0a11",
+  "psycopg2-binary>=2.9.12",
 ]
 
 [project.optional-dependencies]

@@ -1,17 +1,15 @@
 """
-Consolidated research pipeline.
+Founder research pipeline.
 
 Input:  founder name + optional context string
-Output: vectors in Qdrant + claims/events/quotes + dossier in SQLite/Postgres
+Output: chunks embedded in Qdrant, provenance in SQLite/Postgres
 
 Stages:
   1. Find or create subject
   2. Discover URLs via Exa neural search
-  3. Fetch each source (transcript or web article)
+  3. Fetch each source (Firecrawl for web, youtube-transcript-api for video)
   4. Normalize to clean text
   5. Chunk → embed → upsert to Qdrant
-  6. Extract claims, events, and quotes
-  7. Assemble dossier
 """
 
 from __future__ import annotations
@@ -29,13 +27,7 @@ from newsletter.adapters.web import WebAdapter
 from newsletter.adapters.youtube import YouTubeAdapter
 from newsletter.db import create_db_and_tables, get_session_factory
 from newsletter.enums import SourcePlatform, SourceStatus
-from newsletter.models import Artifact, Claim, Document, Event, Quote, Source, Subject
-from newsletter.services.dossier import build_dossier
-from newsletter.services.extraction import (
-    extract_claim_payloads,
-    extract_event_payloads,
-    extract_quote_payloads,
-)
+from newsletter.models import Artifact, Document, Source, Subject
 from newsletter.services.ingestion import ingest_document
 from newsletter.storage.object_store import FilesystemObjectStore
 
@@ -71,7 +63,7 @@ def run(name: str, context: str = "", *, verbose: bool = True) -> dict:
 
     Returns:
         {"subject_id": str, "discovered": int, "processed": int,
-         "failed": int, "chunks": int, "dossier_version": int}
+         "failed": int, "chunks": int}
     """
 
     def log(msg: str) -> None:
@@ -134,10 +126,9 @@ def run(name: str, context: str = "", *, verbose: bool = True) -> dict:
             )
         ).all()
 
-        log(f"\n[2/4] Processing {len(pending)} pending sources…\n")
+        log(f"\n[2/3] Processing {len(pending)} pending sources…\n")
 
         stats: dict = {"discovered": len(discovered), "processed": 0, "failed": 0, "chunks": 0}
-        newly_processed: list[Source] = []
 
         for source in pending:
             adapter = _adapter_for(source.platform)
@@ -152,7 +143,6 @@ def run(name: str, context: str = "", *, verbose: bool = True) -> dict:
                     session.commit()
                     stats["processed"] += 1
                     stats["chunks"] += chunk_count
-                    newly_processed.append(source)
                     log(f"  ✓  {label}  ({chunk_count} chunks)")
                     continue
 
@@ -198,7 +188,6 @@ def run(name: str, context: str = "", *, verbose: bool = True) -> dict:
 
                 stats["processed"] += 1
                 stats["chunks"] += chunk_count
-                newly_processed.append(source)
                 log(f"  ✓  {label}  ({chunk_count} chunks)")
 
             except AdapterUnavailable as exc:
@@ -217,55 +206,12 @@ def run(name: str, context: str = "", *, verbose: bool = True) -> dict:
                 log(f"     {exc}")
                 logger.exception("Unexpected error processing source %s", source.id)
 
-        # ── 3/4. Extract claims, events, quotes ───────────────────────────
-        if newly_processed:
-            log(f"\n[3/4] Extracting structured facts from {len(newly_processed)} source(s)…")
-            for source in newly_processed:
-                for doc in source.documents:
-                    for payload in extract_claim_payloads(subject, source, doc):
-                        session.add(Claim(
-                            subject_id=subject.id,
-                            source_id=source.id,
-                            claim_type=str(payload["claim_type"]),
-                            statement=str(payload["statement"]),
-                            confidence=float(payload["confidence"]),
-                            citations=list(payload["citations"]),
-                            rationale=str(payload["rationale"]),
-                        ))
-                    for payload in extract_event_payloads(source, doc):
-                        session.add(Event(
-                            subject_id=subject.id,
-                            source_id=source.id,
-                            event_type=str(payload["event_type"]),
-                            summary=str(payload["summary"]),
-                            event_date=payload["event_date"],
-                            confidence=float(payload["confidence"]),
-                            citations=list(payload["citations"]),
-                        ))
-                    for payload in extract_quote_payloads(source, doc, default_speaker=subject.name):
-                        session.add(Quote(
-                            subject_id=subject.id,
-                            source_id=source.id,
-                            speaker=payload["speaker"],
-                            quote_text=str(payload["quote_text"]),
-                            confidence=float(payload["confidence"]),
-                            citations=list(payload["citations"]),
-                        ))
-                session.commit()
-
-        # ── 4/4. Assemble dossier ──────────────────────────────────────────
-        log(f"\n[4/4] Assembling dossier…")
-        dossier = build_dossier(session, subject)
-        session.commit()
-        stats["dossier_version"] = dossier.version
-
         # ── Summary ───────────────────────────────────────────────────────
-        log(f"\n  Done.\n")
+        log(f"\n[3/3] Done.\n")
         log(f"  Sources found      {stats['discovered']}")
         log(f"  Sources processed  {stats['processed']}")
         log(f"  Sources failed     {stats['failed']}")
         log(f"  Chunks in Qdrant   {stats['chunks']}")
-        log(f"  Dossier version    {stats['dossier_version']}")
         log(f"\n  subject_id: {subject.id}")
         log(f"\n  To search:")
         log(f"  curl 'http://localhost:8000/search?q=your+question&subject_id={subject.id}'")

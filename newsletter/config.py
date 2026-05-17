@@ -21,6 +21,11 @@ class Settings(BaseSettings):
 
     exa_api_key: str | None = Field(default=None, alias="EXA_API_KEY")
 
+    anthropic_api_key: str | None = Field(default=None, alias="ANTHROPIC_API_KEY")
+    anthropic_model: str = Field(default="claude-sonnet-4-6", alias="ANTHROPIC_MODEL")
+    mem0_api_key: str | None = Field(default=None, alias="MEM0_API_KEY")
+    chat_user_id: str = Field(default="michael", alias="CHAT_USER_ID")
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 

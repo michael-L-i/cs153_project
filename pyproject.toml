@@ -22,6 +22,8 @@ dependencies = [
   "zeroentropy>=0.1.0a11",
   "psycopg2-binary>=2.9.12",
   "fastembed>=0.8.0",
+  "anthropic>=0.40.0",
+  "mem0ai>=0.1.40",
 ]
 
 [project.optional-dependencies]

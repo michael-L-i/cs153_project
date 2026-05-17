@@ -1,0 +1,162 @@
+"""
+Per-founder chat: RAG over Qdrant + Mem0 long-term memory + Claude.
+
+The founder's knowledge sandbox lives in Qdrant (filtered by subject_id).
+Mem0 stores the *user's* side of the conversation — facts about Michael,
+preferences, prior topics — scoped to (user_id, agent_id=subject_id).
+Recent raw turns come from Postgres for short-term continuity.
+"""
+
+from __future__ import annotations
+
+import logging
+from functools import lru_cache
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from newsletter.config import get_settings
+from newsletter.models import Conversation, Subject
+from newsletter.services.vector import search as vector_search
+
+logger = logging.getLogger(__name__)
+
+RECENT_TURNS = 20
+RAG_LIMIT = 6
+MEM0_LIMIT = 5
+
+
+@lru_cache(maxsize=1)
+def _anthropic():
+    from anthropic import Anthropic
+    settings = get_settings()
+    if not settings.anthropic_api_key:
+        raise RuntimeError("ANTHROPIC_API_KEY is not set")
+    return Anthropic(api_key=settings.anthropic_api_key)
+
+
+@lru_cache(maxsize=1)
+def _mem0():
+    from mem0 import MemoryClient
+    settings = get_settings()
+    if not settings.mem0_api_key:
+        return None
+    return MemoryClient(api_key=settings.mem0_api_key)
+
+
+def _recent_turns(session: Session, subject_id: str, user_id: str, limit: int = RECENT_TURNS) -> list[Conversation]:
+    rows = session.scalars(
+        select(Conversation)
+        .where(Conversation.subject_id == subject_id, Conversation.user_id == user_id)
+        .order_by(Conversation.created_at.desc())
+        .limit(limit)
+    ).all()
+    return list(reversed(rows))
+
+
+def _retrieve_context(subject_id: str, message: str) -> list[str]:
+    try:
+        results = vector_search(message, subject_id=subject_id, limit=RAG_LIMIT)
+    except Exception as exc:
+        logger.warning("vector search failed: %s", exc)
+        return []
+    return [r.text for r in results if r.text]
+
+
+def _recall_memories(user_id: str, agent_id: str, message: str) -> list[str]:
+    client = _mem0()
+    if client is None:
+        return []
+    try:
+        results = client.search(query=message, user_id=user_id, agent_id=agent_id, limit=MEM0_LIMIT)
+    except Exception as exc:
+        logger.warning("mem0 search failed: %s", exc)
+        return []
+    # hosted Mem0 returns a list of {"memory": "...", ...} dicts
+    out = []
+    for item in results or []:
+        if isinstance(item, dict):
+            text = item.get("memory") or item.get("text")
+            if text:
+                out.append(text)
+    return out
+
+
+def _remember(user_id: str, agent_id: str, user_message: str, assistant_reply: str) -> None:
+    client = _mem0()
+    if client is None:
+        return
+    try:
+        client.add(
+            messages=[
+                {"role": "user", "content": user_message},
+                {"role": "assistant", "content": assistant_reply},
+            ],
+            user_id=user_id,
+            agent_id=agent_id,
+        )
+    except Exception as exc:
+        logger.warning("mem0 add failed: %s", exc)
+
+
+def _build_system_prompt(subject: Subject, chunks: list[str], memories: list[str]) -> str:
+    company = f" ({subject.company_name})" if subject.company_name else ""
+    parts = [
+        f"You are speaking as {subject.name}{company}. Respond in the first person, in their voice, "
+        "grounded strictly in the source excerpts below. If the excerpts do not cover what is asked, "
+        "say so plainly rather than inventing detail. Keep replies conversational and concise.",
+    ]
+    if memories:
+        parts.append("\n## What you remember about the person you're talking to\n" + "\n".join(f"- {m}" for m in memories))
+    if chunks:
+        parts.append("\n## Source excerpts from your interviews, writing, and talks\n" + "\n\n---\n\n".join(chunks))
+    else:
+        parts.append("\n## Source excerpts\n(none retrieved — be honest about the gap)")
+    return "\n".join(parts)
+
+
+def respond(session: Session, subject_id: str, message: str, user_id: str | None = None) -> str:
+    settings = get_settings()
+    user_id = user_id or settings.chat_user_id
+
+    subject = session.get(Subject, subject_id)
+    if subject is None:
+        raise ValueError(f"Subject {subject_id} not found")
+
+    history = _recent_turns(session, subject_id, user_id)
+    chunks = _retrieve_context(subject_id, message)
+    memories = _recall_memories(user_id, subject_id, message)
+    system = _build_system_prompt(subject, chunks, memories)
+
+    messages = [{"role": c.role, "content": c.content} for c in history]
+    messages.append({"role": "user", "content": message})
+
+    client = _anthropic()
+    resp = client.messages.create(
+        model=settings.anthropic_model,
+        max_tokens=1024,
+        system=system,
+        messages=messages,
+    )
+    reply = "".join(block.text for block in resp.content if getattr(block, "type", None) == "text").strip()
+    if not reply:
+        reply = "(no reply)"
+
+    session.add(Conversation(subject_id=subject_id, user_id=user_id, role="user", content=message))
+    session.add(Conversation(subject_id=subject_id, user_id=user_id, role="assistant", content=reply))
+    session.commit()
+
+    _remember(user_id, subject_id, message, reply)
+    return reply
+
+
+def list_messages(session: Session, subject_id: str, user_id: str | None = None, limit: int = 200) -> list[Conversation]:
+    settings = get_settings()
+    user_id = user_id or settings.chat_user_id
+    rows = session.scalars(
+        select(Conversation)
+        .where(Conversation.subject_id == subject_id, Conversation.user_id == user_id)
+        .order_by(Conversation.created_at.desc())
+        .limit(limit)
+    ).all()
+    return list(reversed(rows))

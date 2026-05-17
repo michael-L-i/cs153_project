@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FIRSTHAND — Conversation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..900,0..100;1,9..144,300..900,0..100&family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css" />
+<style>
+  .chat-wrap {
+    max-width: var(--col-max);
+    margin: 0 auto;
+    padding: clamp(28px, 4vw, 56px) var(--gutter) 120px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .chat-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 24px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-mute);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .chat-top a { color: var(--ink-soft); text-decoration: none; border-bottom: 1px solid var(--rule); }
+  .chat-head {
+    display: grid;
+    grid-template-columns: 96px 1fr;
+    gap: 28px;
+    align-items: center;
+    border-top: 1px solid var(--ink);
+    border-bottom: 1px solid var(--rule);
+    padding: 28px 0;
+    margin-bottom: 32px;
+  }
+  .chat-mono {
+    width: 96px; height: 96px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--mono-bg, #E2D3B0);
+    color: var(--mono-ink, #7B3A18);
+    font-family: var(--serif);
+    font-size: 42px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+  .chat-id .name {
+    display: block;
+    font-family: var(--serif);
+    font-size: clamp(28px, 4vw, 44px);
+    font-weight: 400;
+    line-height: 1.05;
+    letter-spacing: -0.015em;
+  }
+  .chat-id .sub {
+    display: block;
+    margin-top: 8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-mute);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .chat-thread {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    margin-bottom: 32px;
+  }
+  .turn {
+    display: flex;
+    flex-direction: column;
+    max-width: 78%;
+  }
+  .turn .who {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    margin-bottom: 6px;
+  }
+  .turn .body {
+    font-family: var(--read);
+    font-size: 17px;
+    line-height: 1.6;
+    color: var(--ink);
+    white-space: pre-wrap;
+  }
+  .turn.you { align-self: flex-end; text-align: right; }
+  .turn.you .body {
+    background: var(--paper-card);
+    border: 1px solid var(--rule);
+    padding: 14px 18px;
+    border-radius: 2px;
+  }
+  .turn.them { align-self: flex-start; }
+  .turn.them .body {
+    border-left: 2px solid var(--ink);
+    padding: 2px 0 2px 16px;
+  }
+  .chat-empty {
+    color: var(--ink-mute);
+    font-style: italic;
+    align-self: center;
+    padding: 40px 0;
+  }
+  .chat-compose {
+    position: sticky;
+    bottom: 20px;
+    background: var(--paper);
+    border: 1px solid var(--ink);
+    padding: 14px 16px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+    box-shadow: 0 12px 30px -20px rgba(27, 24, 20, 0.4);
+  }
+  .chat-compose textarea {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-family: var(--read);
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--ink);
+    resize: none;
+    outline: none;
+    min-height: 24px;
+    max-height: 200px;
+  }
+  .chat-compose button {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    padding: 10px 16px;
+    cursor: pointer;
+  }
+  .chat-compose button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .chat-pending {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-mute);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    align-self: flex-start;
+    padding: 8px 0;
+  }
+  .chat-error {
+    color: var(--rust);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 8px 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="grain" aria-hidden="true"></div>
+
+<div class="chat-wrap">
+  <div class="chat-top">
+    <a href="/">← The Directory</a>
+    <span data-source-line>—</span>
+  </div>
+
+  <header class="chat-head">
+    <div class="chat-mono" data-mono>··</div>
+    <div class="chat-id">
+      <span class="name" data-name>Loading…</span>
+      <span class="sub" data-sub>—</span>
+    </div>
+  </header>
+
+  <div class="chat-thread" data-thread>
+    <div class="chat-empty" data-empty>Say something to start the conversation.</div>
+  </div>
+
+  <form class="chat-compose" data-form>
+    <textarea data-input placeholder="Ask a question. Shift+Enter for newline." rows="1"></textarea>
+    <button type="submit" data-send>Send →</button>
+  </form>
+</div>
+
+<script>
+(async () => {
+  const PALETTE = [
+    ["#E2D3B0", "#7B3A18"],
+    ["#D8E0CC", "#3F4F2D"],
+    ["#EFD9C8", "#9C3B1B"],
+    ["#D5D8E0", "#2E3B5A"],
+    ["#E5DAC2", "#6E5320"],
+    ["#DCD2C0", "#5A4422"],
+    ["#CDD8D2", "#2C4A3D"],
+    ["#E8D6D0", "#8C3232"],
+  ];
+  const initials = (name) =>
+    (name || "").split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0].toUpperCase()).join("") || "··";
+  const hash = (s) => {
+    let h = 0; for (const ch of s || "") h = (h * 31 + ch.charCodeAt(0)) | 0;
+    return Math.abs(h);
+  };
+
+  const params = new URLSearchParams(location.search);
+  const id = params.get("id");
+  if (!id) {
+    document.querySelector("[data-name]").textContent = "No founder selected.";
+    return;
+  }
+
+  const thread = document.querySelector("[data-thread]");
+  const emptyEl = document.querySelector("[data-empty]");
+  const input = document.querySelector("[data-input]");
+  const form = document.querySelector("[data-form]");
+  const sendBtn = document.querySelector("[data-send]");
+
+  const renderTurn = (role, content) => {
+    if (emptyEl && !emptyEl.hidden) emptyEl.hidden = true;
+    const div = document.createElement("div");
+    div.className = "turn " + (role === "user" ? "you" : "them");
+    const who = document.createElement("span");
+    who.className = "who";
+    who.textContent = role === "user" ? "You" : (window.__founderName || "Them");
+    const body = document.createElement("div");
+    body.className = "body";
+    body.textContent = content;
+    div.appendChild(who);
+    div.appendChild(body);
+    thread.appendChild(div);
+    window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+    return div;
+  };
+
+  // Load founder metadata
+  try {
+    const res = await fetch(`/founders/${encodeURIComponent(id)}`);
+    if (res.ok) {
+      const f = await res.json();
+      window.__founderName = f.name;
+      document.querySelector("[data-name]").textContent = f.name;
+      const subBits = [];
+      if (f.company_name) subBits.push(f.company_name);
+      if (f.notes) subBits.push(f.notes);
+      document.querySelector("[data-sub]").textContent = subBits.join(" · ") || "Founder dossier";
+      document.querySelector("[data-source-line]").textContent =
+        `${f.source_count} source${f.source_count === 1 ? "" : "s"} in the sandbox`;
+      const [bg, ink] = PALETTE[hash(f.id) % PALETTE.length];
+      const mono = document.querySelector("[data-mono]");
+      mono.style.setProperty("--mono-bg", bg);
+      mono.style.setProperty("--mono-ink", ink);
+      mono.style.background = bg;
+      mono.style.color = ink;
+      mono.textContent = initials(f.name);
+      document.title = `FIRSTHAND — ${f.name}`;
+    } else {
+      document.querySelector("[data-name]").textContent = "Founder not found.";
+      return;
+    }
+  } catch (err) {
+    document.querySelector("[data-name]").textContent = "Could not load founder.";
+    return;
+  }
+
+  // Hydrate prior messages
+  try {
+    const res = await fetch(`/founders/${encodeURIComponent(id)}/messages`);
+    if (res.ok) {
+      const { messages } = await res.json();
+      if (messages && messages.length) {
+        emptyEl.hidden = true;
+        for (const m of messages) renderTurn(m.role, m.content);
+      }
+    }
+  } catch (_) { /* ignore */ }
+
+  // Autosize textarea
+  const autosize = () => {
+    input.style.height = "auto";
+    input.style.height = Math.min(input.scrollHeight, 200) + "px";
+  };
+  input.addEventListener("input", autosize);
+
+  const send = async () => {
+    const message = input.value.trim();
+    if (!message) return;
+    input.value = "";
+    autosize();
+    renderTurn("user", message);
+    sendBtn.disabled = true;
+
+    const pending = document.createElement("div");
+    pending.className = "chat-pending";
+    pending.textContent = "thinking…";
+    thread.appendChild(pending);
+
+    try {
+      const res = await fetch(`/founders/${encodeURIComponent(id)}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message }),
+      });
+      pending.remove();
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        const e = document.createElement("div");
+        e.className = "chat-error";
+        e.textContent = err.detail || `Error ${res.status}`;
+        thread.appendChild(e);
+      } else {
+        const { reply } = await res.json();
+        renderTurn("assistant", reply);
+      }
+    } catch (err) {
+      pending.remove();
+      const e = document.createElement("div");
+      e.className = "chat-error";
+      e.textContent = "Network error.";
+      thread.appendChild(e);
+    } finally {
+      sendBtn.disabled = false;
+      input.focus();
+    }
+  };
+
+  form.addEventListener("submit", (e) => { e.preventDefault(); send(); });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
+  });
+  input.focus();
+})();
+</script>
+</body>
+</html>

@@ -201,7 +201,7 @@
       : (founder.notes || "Founder dossier");
     const loc = `${founder.source_count} source${founder.source_count === 1 ? "" : "s"} · Added ${fmtDate(founder.created_at)}`;
     return `
-      <a href="#" class="card" style="--mono-bg:${bg};--mono-ink:${ink}">
+      <a href="/founder.html?id=${encodeURIComponent(founder.id)}" class="card" style="--mono-bg:${bg};--mono-ink:${ink}">
         <div class="card-mono">
           <span class="mono-letters">${initials(founder.name) || "··"}</span>
           <span class="mono-issue">№ ${issueNum}</span>

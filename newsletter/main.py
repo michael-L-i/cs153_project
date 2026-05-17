@@ -6,12 +6,14 @@ from pathlib import Path
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from newsletter.config import get_settings
 from newsletter.db import create_db_and_tables, get_db_session
 from newsletter.models import Dossier, Event, ResearchJob, Source, Subject
+from newsletter.services import chat as chat_service
 from newsletter.schemas import (
     DossierRead,
     EventRead,
@@ -76,6 +78,58 @@ def create_app() -> FastAPI:
                 }
             )
         return {"count": len(founders), "founders": founders}
+
+    @app.get("/founders/{subject_id}")
+    def get_founder(subject_id: str, session: Session = Depends(get_db_session)) -> dict:
+        row = session.execute(
+            select(Subject, func.count(Source.id).label("source_count"))
+            .outerjoin(Source, Source.subject_id == Subject.id)
+            .where(Subject.id == subject_id)
+            .group_by(Subject.id)
+        ).first()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Founder not found.")
+        subject, source_count = row
+        return {
+            "id": subject.id,
+            "name": subject.name,
+            "company_name": subject.company_name,
+            "notes": subject.notes,
+            "source_count": int(source_count or 0),
+            "created_at": subject.created_at.isoformat(),
+        }
+
+    @app.get("/founders/{subject_id}/messages")
+    def get_founder_messages(subject_id: str, session: Session = Depends(get_db_session)) -> dict:
+        if session.get(Subject, subject_id) is None:
+            raise HTTPException(status_code=404, detail="Founder not found.")
+        rows = chat_service.list_messages(session, subject_id)
+        return {
+            "messages": [
+                {"role": r.role, "content": r.content, "created_at": r.created_at.isoformat()}
+                for r in rows
+            ]
+        }
+
+    class ChatRequest(BaseModel):
+        message: str
+
+    @app.post("/founders/{subject_id}/chat")
+    def post_founder_chat(
+        subject_id: str,
+        payload: ChatRequest,
+        session: Session = Depends(get_db_session),
+    ) -> dict:
+        if session.get(Subject, subject_id) is None:
+            raise HTTPException(status_code=404, detail="Founder not found.")
+        message = (payload.message or "").strip()
+        if not message:
+            raise HTTPException(status_code=400, detail="Message is empty.")
+        try:
+            reply = chat_service.respond(session, subject_id, message)
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        return {"reply": reply}
 
     @app.post("/subjects", response_model=SubjectRead)
     def create_subject(payload: SubjectCreate, session: Session = Depends(get_db_session)) -> Subject:

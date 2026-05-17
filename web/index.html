@@ -46,7 +46,7 @@
   <div class="nameplate-foot">
     <div class="foot-col">
       <span class="kicker">In residence</span>
-      <span class="foot-num">94</span>
+      <span class="foot-num" data-live-count>94</span>
       <span class="foot-cap">founders interviewed</span>
     </div>
     <div class="foot-col">
@@ -191,7 +191,7 @@
     </div>
   </div>
 
-  <div class="dir-grid">
+  <div class="dir-grid" data-dir-grid>
     <!-- Card -->
     <a href="#" class="card" style="--mono-bg:#E2D3B0;--mono-ink:#7B3A18">
       <div class="card-mono">
@@ -300,7 +300,7 @@
 
   <div class="dir-foot">
     <span class="foot-line"></span>
-    <a href="#" class="link link-strong">Browse all 94 founders →</a>
+    <a href="#" class="link link-strong" data-live-browse>Browse all 94 founders →</a>
     <span class="foot-line"></span>
   </div>
 </section>
@@ -416,5 +416,74 @@
   </div>
 </footer>
 
+<script>
+(async () => {
+  const PALETTE = [
+    ["#E2D3B0", "#7B3A18"],
+    ["#D8E0CC", "#3F4F2D"],
+    ["#EFD9C8", "#9C3B1B"],
+    ["#D5D8E0", "#2E3B5A"],
+    ["#E5DAC2", "#6E5320"],
+    ["#DCD2C0", "#5A4422"],
+    ["#CDD8D2", "#2C4A3D"],
+    ["#E8D6D0", "#8C3232"],
+  ];
+
+  const initials = (name) =>
+    name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0].toUpperCase()).join("");
+
+  const fmtDate = (iso) => {
+    try {
+      const d = new Date(iso);
+      return d.toLocaleDateString(undefined, { month: "short", year: "numeric" });
+    } catch { return ""; }
+  };
+
+  const cardHTML = (founder, idx, totalLive) => {
+    const [bg, ink] = PALETTE[idx % PALETTE.length];
+    const issueNum = String(totalLive - idx).padStart(2, "0");
+    const role = founder.company_name
+      ? `${founder.company_name} · ${founder.notes || "Founder dossier"}`
+      : (founder.notes || "Founder dossier");
+    const loc = `${founder.source_count} source${founder.source_count === 1 ? "" : "s"} · Added ${fmtDate(founder.created_at)}`;
+    return `
+      <a href="#" class="card" style="--mono-bg:${bg};--mono-ink:${ink}">
+        <div class="card-mono">
+          <span class="mono-letters">${initials(founder.name) || "··"}</span>
+          <span class="mono-issue">№ ${issueNum}</span>
+        </div>
+        <div class="card-meta">
+          <span class="card-name">${founder.name}</span>
+          <span class="card-role">${role}</span>
+          <span class="card-loc">${loc}</span>
+        </div>
+        <span class="card-arrow">→</span>
+      </a>`;
+  };
+
+  try {
+    const res = await fetch("/founders");
+    if (!res.ok) return;
+    const data = await res.json();
+    const founders = data.founders || [];
+    if (!founders.length) return;
+
+    const grid = document.querySelector("[data-dir-grid]");
+    if (grid) {
+      const live = founders.map((f, i) => cardHTML(f, i, founders.length)).join("");
+      grid.innerHTML = live + grid.innerHTML;
+    }
+
+    const count = data.count;
+    document.querySelectorAll("[data-live-count]").forEach((el) => {
+      el.textContent = String(count).padStart(2, "0");
+    });
+    const browse = document.querySelector("[data-live-browse]");
+    if (browse) browse.textContent = `Browse all ${count} founder${count === 1 ? "" : "s"} →`;
+  } catch (err) {
+    console.warn("founders fetch failed", err);
+  }
+})();
+</script>
 </body>
 </html>

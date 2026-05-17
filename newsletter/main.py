@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
-from sqlalchemy import select
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from newsletter.config import get_settings
@@ -37,9 +40,42 @@ async def lifespan(_app: FastAPI):
 def create_app() -> FastAPI:
     app = FastAPI(title="Founder Newsletter Research Platform", lifespan=lifespan)
 
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
     @app.get("/healthz")
     def healthcheck() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.get("/founders")
+    def list_founders(session: Session = Depends(get_db_session)) -> dict:
+        rows = session.execute(
+            select(
+                Subject,
+                func.count(Source.id).label("source_count"),
+            )
+            .outerjoin(Source, Source.subject_id == Subject.id)
+            .group_by(Subject.id)
+            .order_by(Subject.created_at.desc())
+        ).all()
+
+        founders = []
+        for subject, source_count in rows:
+            founders.append(
+                {
+                    "id": subject.id,
+                    "name": subject.name,
+                    "company_name": subject.company_name,
+                    "notes": subject.notes,
+                    "source_count": int(source_count or 0),
+                    "created_at": subject.created_at.isoformat(),
+                }
+            )
+        return {"count": len(founders), "founders": founders}
 
     @app.post("/subjects", response_model=SubjectRead)
     def create_subject(payload: SubjectCreate, session: Session = Depends(get_db_session)) -> Subject:
@@ -158,6 +194,10 @@ def create_app() -> FastAPI:
             max_quotes=payload.max_quotes,
             max_events=payload.max_events,
         )
+
+    web_dir = Path(__file__).resolve().parent.parent / "web"
+    if web_dir.is_dir():
+        app.mount("/", StaticFiles(directory=str(web_dir), html=True), name="web")
 
     return app
 

@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FIRSTHAND — Sign in</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..900,0..100;1,9..144,300..900,0..100&family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css" />
+<style>
+  .auth-wrap {
+    max-width: 420px;
+    margin: 0 auto;
+    padding: clamp(56px, 10vh, 120px) var(--gutter) 80px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .auth-top {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    margin-bottom: 24px;
+  }
+  .auth-top a { color: var(--ink-soft); text-decoration: none; border-bottom: 1px solid var(--rule); }
+  .auth-card {
+    border-top: 1px solid var(--ink);
+    border-bottom: 1px solid var(--rule);
+    padding: 32px 0;
+  }
+  .auth-title {
+    font-family: var(--serif);
+    font-size: clamp(32px, 4vw, 44px);
+    font-weight: 400;
+    letter-spacing: -0.015em;
+    line-height: 1.05;
+    margin: 0 0 8px;
+  }
+  .auth-sub {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-mute);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 28px;
+  }
+  .auth-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+  .auth-field label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+  .auth-field input {
+    font-family: var(--read);
+    font-size: 16px;
+    color: var(--ink);
+    background: var(--paper-card);
+    border: 1px solid var(--rule);
+    padding: 12px 14px;
+    outline: none;
+  }
+  .auth-field input:focus { border-color: var(--ink); }
+  .auth-actions { display: flex; align-items: center; gap: 16px; margin-top: 24px; }
+  .auth-actions button {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    padding: 12px 18px;
+    cursor: pointer;
+  }
+  .auth-actions button[disabled] { opacity: 0.5; cursor: not-allowed; }
+  .auth-toggle {
+    background: none;
+    border: none;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    cursor: pointer;
+    padding: 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .auth-msg {
+    margin-top: 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--rust);
+    min-height: 1.4em;
+  }
+  .auth-msg.ok { color: var(--sage); }
+</style>
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+
+<div class="auth-wrap">
+  <div class="auth-top"><a href="/">← The Directory</a></div>
+  <div class="auth-card">
+    <h1 class="auth-title" data-title>Sign in</h1>
+    <div class="auth-sub" data-sub>To continue to your conversations</div>
+
+    <form data-form>
+      <div class="auth-field">
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="email" required />
+      </div>
+      <div class="auth-field">
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password" minlength="6" required />
+      </div>
+      <div class="auth-actions">
+        <button type="submit" data-submit>Sign in →</button>
+        <button type="button" class="auth-toggle" data-toggle>Need an account? Sign up</button>
+      </div>
+      <div class="auth-msg" data-msg></div>
+    </form>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+  const cfgRes = await fetch("/auth/config");
+  const cfg = await cfgRes.json();
+  if (!cfg.supabase_url || !cfg.supabase_anon_key) {
+    document.querySelector("[data-msg]").textContent =
+      "Auth is not configured on the server (SUPABASE_URL / SUPABASE_ANON_KEY missing).";
+    document.querySelector("[data-submit]").disabled = true;
+    throw new Error("supabase config missing");
+  }
+  const supabase = createClient(cfg.supabase_url, cfg.supabase_anon_key);
+  window.__supabase = supabase;
+
+  // already signed in? bounce to next
+  const params = new URLSearchParams(location.search);
+  const next = params.get("next") || "/";
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) { location.replace(next); }
+
+  let mode = "signin";
+  const title = document.querySelector("[data-title]");
+  const sub = document.querySelector("[data-sub]");
+  const submit = document.querySelector("[data-submit]");
+  const toggle = document.querySelector("[data-toggle]");
+  const msg = document.querySelector("[data-msg]");
+  const pwd = document.getElementById("password");
+
+  const setMode = (m) => {
+    mode = m;
+    if (m === "signup") {
+      title.textContent = "Create account";
+      sub.textContent = "Start your founder conversations";
+      submit.textContent = "Sign up →";
+      toggle.textContent = "Already have an account? Sign in";
+      pwd.setAttribute("autocomplete", "new-password");
+    } else {
+      title.textContent = "Sign in";
+      sub.textContent = "To continue to your conversations";
+      submit.textContent = "Sign in →";
+      toggle.textContent = "Need an account? Sign up";
+      pwd.setAttribute("autocomplete", "current-password");
+    }
+    msg.textContent = "";
+    msg.classList.remove("ok");
+  };
+  toggle.addEventListener("click", () => setMode(mode === "signin" ? "signup" : "signin"));
+
+  document.querySelector("[data-form]").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("email").value.trim();
+    const password = pwd.value;
+    submit.disabled = true;
+    msg.classList.remove("ok");
+    msg.textContent = "…";
+    try {
+      if (mode === "signup") {
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        msg.classList.add("ok");
+        msg.textContent = "Check your email to confirm, then sign in.";
+        setMode("signin");
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        location.replace(next);
+      }
+    } catch (err) {
+      msg.textContent = err.message || "Something went wrong.";
+    } finally {
+      submit.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

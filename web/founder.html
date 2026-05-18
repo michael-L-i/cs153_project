@@ -172,6 +172,7 @@
   <div class="chat-top">
     <a href="/">← The Directory</a>
     <span data-source-line>—</span>
+    <span data-session style="margin-left:auto"></span>
   </div>
 
   <header class="chat-head">
@@ -192,8 +193,50 @@
   </form>
 </div>
 
-<script>
+<script type="module">
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 (async () => {
+  // --- auth bootstrap ---
+  const here = location.pathname + location.search;
+  const goLogin = () => location.replace(`/login.html?next=${encodeURIComponent(here)}`);
+
+  let supabase = null;
+  let session = null;
+  try {
+    const cfg = await (await fetch("/auth/config")).json();
+    if (!cfg.supabase_url || !cfg.supabase_anon_key) {
+      document.querySelector("[data-session]").textContent = "auth not configured";
+    } else {
+      supabase = createClient(cfg.supabase_url, cfg.supabase_anon_key);
+      ({ data: { session } } = await supabase.auth.getSession());
+    }
+  } catch (_) { /* fall through */ }
+  if (!session) { goLogin(); return; }
+
+  const sessionEl = document.querySelector("[data-session]");
+  sessionEl.innerHTML = "";
+  const who = document.createElement("span");
+  who.textContent = session.user.email || "signed in";
+  const sep = document.createTextNode(" · ");
+  const out = document.createElement("a");
+  out.href = "#"; out.textContent = "sign out";
+  out.addEventListener("click", async (e) => {
+    e.preventDefault();
+    await supabase.auth.signOut();
+    goLogin();
+  });
+  sessionEl.append(who, sep, out);
+
+  const authFetch = async (url, opts = {}) => {
+    const { data: { session: cur } } = await supabase.auth.getSession();
+    if (!cur) { goLogin(); throw new Error("not signed in"); }
+    const headers = new Headers(opts.headers || {});
+    headers.set("Authorization", `Bearer ${cur.access_token}`);
+    const res = await fetch(url, { ...opts, headers });
+    if (res.status === 401) { goLogin(); throw new Error("unauthorized"); }
+    return res;
+  };
+
   const PALETTE = [
     ["#E2D3B0", "#7B3A18"],
     ["#D8E0CC", "#3F4F2D"],
@@ -273,7 +316,7 @@
 
   // Hydrate prior messages
   try {
-    const res = await fetch(`/founders/${encodeURIComponent(id)}/messages`);
+    const res = await authFetch(`/founders/${encodeURIComponent(id)}/messages`);
     if (res.ok) {
       const { messages } = await res.json();
       if (messages && messages.length) {
@@ -304,7 +347,7 @@
     thread.appendChild(pending);
 
     try {
-      const res = await fetch(`/founders/${encodeURIComponent(id)}/chat`, {
+      const res = await authFetch(`/founders/${encodeURIComponent(id)}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message }),

@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from newsletter.auth import AuthUser, get_current_user
 from newsletter.config import get_settings
 from newsletter.db import create_db_and_tables, get_db_session
 from newsletter.models import Dossier, Event, ResearchJob, Source, Subject
@@ -52,6 +53,11 @@ def create_app() -> FastAPI:
     @app.get("/healthz")
     def healthcheck() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.get("/auth/config")
+    def auth_config() -> dict[str, str | None]:
+        s = get_settings()
+        return {"supabase_url": s.supabase_url, "supabase_anon_key": s.supabase_anon_key}
 
     @app.get("/founders")
     def list_founders(session: Session = Depends(get_db_session)) -> dict:
@@ -100,10 +106,14 @@ def create_app() -> FastAPI:
         }
 
     @app.get("/founders/{subject_id}/messages")
-    def get_founder_messages(subject_id: str, session: Session = Depends(get_db_session)) -> dict:
+    def get_founder_messages(
+        subject_id: str,
+        session: Session = Depends(get_db_session),
+        user: AuthUser = Depends(get_current_user),
+    ) -> dict:
         if session.get(Subject, subject_id) is None:
             raise HTTPException(status_code=404, detail="Founder not found.")
-        rows = chat_service.list_messages(session, subject_id)
+        rows = chat_service.list_messages(session, subject_id, user_id=user.id)
         return {
             "messages": [
                 {"role": r.role, "content": r.content, "created_at": r.created_at.isoformat()}
@@ -119,6 +129,7 @@ def create_app() -> FastAPI:
         subject_id: str,
         payload: ChatRequest,
         session: Session = Depends(get_db_session),
+        user: AuthUser = Depends(get_current_user),
     ) -> dict:
         if session.get(Subject, subject_id) is None:
             raise HTTPException(status_code=404, detail="Founder not found.")
@@ -126,7 +137,7 @@ def create_app() -> FastAPI:
         if not message:
             raise HTTPException(status_code=400, detail="Message is empty.")
         try:
-            reply = chat_service.respond(session, subject_id, message)
+            reply = chat_service.respond(session, subject_id, message, user_id=user.id)
         except RuntimeError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         return {"reply": reply}

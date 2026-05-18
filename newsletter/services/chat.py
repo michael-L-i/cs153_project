@@ -115,9 +115,8 @@ def _build_system_prompt(subject: Subject, chunks: list[str], memories: list[str
     return "\n".join(parts)
 
 
-def respond(session: Session, subject_id: str, message: str, user_id: str | None = None) -> str:
+def respond(session: Session, subject_id: str, message: str, user_id: str) -> str:
     settings = get_settings()
-    user_id = user_id or settings.chat_user_id
 
     subject = session.get(Subject, subject_id)
     if subject is None:
@@ -150,9 +149,7 @@ def respond(session: Session, subject_id: str, message: str, user_id: str | None
     return reply
 
 
-def list_messages(session: Session, subject_id: str, user_id: str | None = None, limit: int = 200) -> list[Conversation]:
-    settings = get_settings()
-    user_id = user_id or settings.chat_user_id
+def list_messages(session: Session, subject_id: str, user_id: str, limit: int = 200) -> list[Conversation]:
     rows = session.scalars(
         select(Conversation)
         .where(Conversation.subject_id == subject_id, Conversation.user_id == user_id)

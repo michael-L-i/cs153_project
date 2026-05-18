@@ -24,7 +24,10 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = Field(default=None, alias="ANTHROPIC_API_KEY")
     anthropic_model: str = Field(default="claude-sonnet-4-6", alias="ANTHROPIC_MODEL")
     mem0_api_key: str | None = Field(default=None, alias="MEM0_API_KEY")
-    chat_user_id: str = Field(default="michael", alias="CHAT_USER_ID")
+
+    supabase_url: str | None = Field(default=None, alias="SUPABASE_URL")
+    supabase_anon_key: str | None = Field(default=None, alias="SUPABASE_ANON_KEY")
+    supabase_jwt_secret: str | None = Field(default=None, alias="SUPABASE_JWT_SECRET")
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

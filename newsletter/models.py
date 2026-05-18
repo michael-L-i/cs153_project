@@ -183,7 +183,7 @@ class Conversation(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     subject_id: Mapped[str] = mapped_column(ForeignKey("subjects.id"), nullable=False, index=True)
-    user_id: Mapped[str] = mapped_column(String(64), nullable=False, default="michael", index=True)
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     role: Mapped[str] = mapped_column(String(16), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False, index=True)

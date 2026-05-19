@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm newsletter.db)",
+      "Bash(rm -rf var/object-store/*)",
+      "Bash(uv run python -c ' *)"
+    ]
+  }
+}

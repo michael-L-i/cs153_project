@@ -300,8 +300,32 @@
     msg.textContent = "…";
     try {
       if (mode === "signup") {
-        const { data, error } = await supabase.auth.signUp({ email, password });
-        if (error) throw error;
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: `${location.origin}/login.html?next=${encodeURIComponent(next)}` },
+        });
+        if (error) {
+          // Supabase returns this when confirmations are OFF and the email already exists.
+          if (/already registered|already exists|already been/i.test(error.message)) {
+            setMode("signin");
+            pwd.value = "";
+            msg.classList.add("ok");
+            msg.textContent = `An account for ${email} already exists. Sign in below.`;
+            return;
+          }
+          throw error;
+        }
+        // With confirmations ON, Supabase signals an existing email by returning a
+        // user with an empty identities[] (and no session). Treat that as "exists".
+        const identities = data.user && data.user.identities;
+        if (!data.session && Array.isArray(identities) && identities.length === 0) {
+          setMode("signin");
+          pwd.value = "";
+          msg.classList.add("ok");
+          msg.textContent = `An account for ${email} already exists. Sign in below.`;
+          return;
+        }
         if (data.session) {
           // Email confirmation is disabled — session is live, go straight in.
           location.replace(next);

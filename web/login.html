@@ -185,11 +185,29 @@
     msg.textContent = "…";
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({ email, password });
+        const { data, error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
+        if (data.session) {
+          // Email confirmation is disabled — session is live, go straight in.
+          location.replace(next);
+          return;
+        }
         msg.classList.add("ok");
-        msg.textContent = "Check your email to confirm, then sign in.";
-        setMode("signin");
+        msg.innerHTML =
+          `We sent a confirmation link to <strong>${email.replace(/[<>&]/g, "")}</strong>. ` +
+          `Open it to activate your account — you'll be signed in automatically.`;
+        submit.textContent = "Waiting for confirmation…";
+        submit.disabled = true;
+        // Poll for a session: when the user clicks the email link in another tab,
+        // Supabase persists the session via localStorage and we can pick it up here.
+        const poll = setInterval(async () => {
+          const { data: { session: s } } = await supabase.auth.getSession();
+          if (s) {
+            clearInterval(poll);
+            location.replace(next);
+          }
+        }, 2000);
+        return;
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;

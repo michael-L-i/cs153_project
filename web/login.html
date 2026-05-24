@@ -99,6 +99,62 @@
     min-height: 1.4em;
   }
   .auth-msg.ok { color: var(--sage); }
+  .auth-confirm { display: none; }
+  .auth-confirm.show { display: block; }
+  .auth-confirm .glyph {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    margin-bottom: 14px;
+  }
+  .auth-confirm .glyph .dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    background: var(--sage);
+    border-radius: 50%;
+    margin-right: 8px;
+    vertical-align: middle;
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.35; }
+    50%      { opacity: 1; }
+  }
+  .auth-confirm p {
+    font-family: var(--read);
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--ink);
+    margin: 0 0 14px;
+  }
+  .auth-confirm .target {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: var(--paper-card);
+    border: 1px solid var(--rule);
+    padding: 10px 12px;
+    display: inline-block;
+    margin-bottom: 18px;
+  }
+  .auth-confirm .row {
+    display: flex; align-items: center; gap: 14px;
+    margin-top: 12px;
+  }
+  .auth-confirm .ghost {
+    background: none;
+    border: none;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    cursor: pointer;
+    padding: 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .auth-confirm .ghost[disabled] { opacity: 0.5; cursor: not-allowed; }
 </style>
 </head>
 <body>
@@ -125,6 +181,18 @@
       </div>
       <div class="auth-msg" data-msg></div>
     </form>
+
+    <div class="auth-confirm" data-confirm>
+      <div class="glyph"><span class="dot"></span>Waiting for confirmation</div>
+      <p>We sent a sign-in link to:</p>
+      <div class="target" data-confirm-email></div>
+      <p>Open it from this device and you'll be signed in automatically — no need to come back here.</p>
+      <div class="row">
+        <button type="button" class="ghost" data-resend>Resend email</button>
+        <button type="button" class="ghost" data-restart>Use a different email</button>
+      </div>
+      <div class="auth-msg" data-confirm-msg></div>
+    </div>
   </div>
 </div>
 
@@ -155,6 +223,53 @@
   const toggle = document.querySelector("[data-toggle]");
   const msg = document.querySelector("[data-msg]");
   const pwd = document.getElementById("password");
+  const form = document.querySelector("[data-form]");
+  const confirm = document.querySelector("[data-confirm]");
+  const confirmEmail = document.querySelector("[data-confirm-email]");
+  const confirmMsg = document.querySelector("[data-confirm-msg]");
+  const resendBtn = document.querySelector("[data-resend]");
+  const restartBtn = document.querySelector("[data-restart]");
+
+  // Auto-redirect the moment Supabase reports a live session (from email link in
+  // another tab, or any other source) — no polling needed.
+  supabase.auth.onAuthStateChange((event, s) => {
+    if (s && (event === "SIGNED_IN" || event === "TOKEN_REFRESHED")) {
+      location.replace(next);
+    }
+  });
+
+  const showConfirmView = (email) => {
+    confirmEmail.textContent = email;
+    form.style.display = "none";
+    confirm.classList.add("show");
+    title.textContent = "Check your inbox";
+    sub.textContent = "One last step to start your conversations";
+  };
+  const showFormView = () => {
+    confirm.classList.remove("show");
+    form.style.display = "";
+    confirmMsg.textContent = "";
+    setMode("signin");
+  };
+  restartBtn.addEventListener("click", showFormView);
+  resendBtn.addEventListener("click", async () => {
+    resendBtn.disabled = true;
+    confirmMsg.classList.remove("ok");
+    confirmMsg.textContent = "…";
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: confirmEmail.textContent,
+      });
+      if (error) throw error;
+      confirmMsg.classList.add("ok");
+      confirmMsg.textContent = "Sent again. Check your inbox (and spam).";
+    } catch (err) {
+      confirmMsg.textContent = err.message || "Could not resend.";
+    } finally {
+      setTimeout(() => { resendBtn.disabled = false; }, 4000);
+    }
+  });
 
   const setMode = (m) => {
     mode = m;
@@ -192,21 +307,7 @@
           location.replace(next);
           return;
         }
-        msg.classList.add("ok");
-        msg.innerHTML =
-          `We sent a confirmation link to <strong>${email.replace(/[<>&]/g, "")}</strong>. ` +
-          `Open it to activate your account — you'll be signed in automatically.`;
-        submit.textContent = "Waiting for confirmation…";
-        submit.disabled = true;
-        // Poll for a session: when the user clicks the email link in another tab,
-        // Supabase persists the session via localStorage and we can pick it up here.
-        const poll = setInterval(async () => {
-          const { data: { session: s } } = await supabase.auth.getSession();
-          if (s) {
-            clearInterval(poll);
-            location.replace(next);
-          }
-        }, 2000);
+        showConfirmView(email);
         return;
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });

@@ -20,7 +20,7 @@
   <div class="mast-row">
     <span class="meta">Vol. 01 · No. 04</span>
     <span class="meta meta-mid">Established Spring 2026 · Brooklyn, NY</span>
-    <span class="meta">May 8, 2026</span>
+    <span class="meta" data-session>—</span>
   </div>
   <div class="mast-row mast-rule">
     <a href="#dir" class="link">The Directory</a>
@@ -170,8 +170,43 @@
   </div>
 </footer>
 
-<script>
+<script type="module">
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 (async () => {
+  // --- gate the whole site behind a Supabase session ---
+  const here = location.pathname + location.search + location.hash;
+  const goLogin = () => location.replace(`/login.html?next=${encodeURIComponent(here)}`);
+
+  let supabase = null;
+  let session = null;
+  try {
+    const cfg = await (await fetch("/auth/config")).json();
+    if (cfg.supabase_url && cfg.supabase_anon_key) {
+      supabase = createClient(cfg.supabase_url, cfg.supabase_anon_key);
+      ({ data: { session } } = await supabase.auth.getSession());
+    }
+  } catch (_) { /* fall through to gate */ }
+  if (!session) { goLogin(); return; }
+
+  // Sign-out chip in the masthead.
+  const sessionEl = document.querySelector("[data-session]");
+  if (sessionEl) {
+    sessionEl.innerHTML = "";
+    const who = document.createElement("span");
+    who.textContent = session.user.email || "signed in";
+    const sep = document.createTextNode(" · ");
+    const out = document.createElement("a");
+    out.href = "#";
+    out.textContent = "sign out";
+    out.style.color = "inherit";
+    out.addEventListener("click", async (e) => {
+      e.preventDefault();
+      await supabase.auth.signOut();
+      goLogin();
+    });
+    sessionEl.append(who, sep, out);
+  }
+
   const PALETTE = [
     ["#E2D3B0", "#7B3A18"],
     ["#D8E0CC", "#3F4F2D"],

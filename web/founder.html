@@ -6,7 +6,7 @@
 <title>FIRSTHAND — Conversation</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..900,0..100;1,9..144,300..900,0..100&family=Inter:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css" />
 <style>
   .chat-wrap {
@@ -164,6 +164,123 @@
     font-size: 13.5px;
     padding: 6px 0;
   }
+  .chat-wrap {
+    max-width: 980px;
+  }
+  .chat-top {
+    font-family: var(--read);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  .chat-top a {
+    border-bottom: 0;
+    color: var(--ink);
+  }
+  .chat-head {
+    grid-template-columns: 80px 1fr;
+    gap: 22px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: var(--paper-card);
+    padding: 18px;
+    box-shadow: 0 24px 60px -48px rgba(17, 24, 39, 0.5);
+  }
+  .chat-mono {
+    width: 80px;
+    height: 80px;
+    border-radius: 6px;
+    font-family: var(--serif);
+    font-size: 34px;
+    font-weight: 650;
+    font-style: normal;
+  }
+  .chat-id .name {
+    font-family: var(--serif);
+    font-weight: 650;
+    letter-spacing: -0.025em;
+  }
+  .chat-id .sub {
+    font-family: var(--read);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  .turn {
+    max-width: min(78%, 720px);
+  }
+  .turn .who {
+    font-family: var(--read);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  .turn .body {
+    font-family: var(--read);
+    font-size: 15px;
+    line-height: 1.62;
+  }
+  .turn.you .body {
+    background: var(--ink);
+    color: #FFFFFF;
+    border: 1px solid var(--ink);
+    border-radius: 8px;
+  }
+  .turn.them .body {
+    background: var(--paper-card);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--rust);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .chat-compose {
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 26px 70px -44px rgba(17, 24, 39, 0.62);
+    backdrop-filter: blur(14px);
+  }
+  .chat-compose textarea {
+    font-family: var(--read);
+    font-size: 15px;
+  }
+  .chat-compose button {
+    font-family: var(--read);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: none;
+    border-radius: 999px;
+    padding: 10px 16px;
+  }
+  .chat-pending,
+  .chat-error {
+    font-family: var(--read);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  @media (max-width: 640px) {
+    .chat-head {
+      grid-template-columns: 64px 1fr;
+      gap: 14px;
+    }
+    .chat-mono {
+      width: 64px;
+      height: 64px;
+      font-size: 28px;
+    }
+    .turn {
+      max-width: 94%;
+    }
+    .chat-compose {
+      bottom: 12px;
+    }
+  }
 </style>
 </head>
 <body>
@@ -238,14 +355,14 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
   };
 
   const PALETTE = [
-    ["#E2D3B0", "#7B3A18"],
-    ["#D8E0CC", "#3F4F2D"],
-    ["#EFD9C8", "#9C3B1B"],
-    ["#D5D8E0", "#2E3B5A"],
-    ["#E5DAC2", "#6E5320"],
-    ["#DCD2C0", "#5A4422"],
-    ["#CDD8D2", "#2C4A3D"],
-    ["#E8D6D0", "#8C3232"],
+    ["#F7F7F2", "#111827"],
+    ["#EEF5FF", "#1D4ED8"],
+    ["#FFF3EA", "#C2410C"],
+    ["#EEF8F3", "#047857"],
+    ["#F4F1FF", "#6D28D9"],
+    ["#F8FAFC", "#334155"],
+    ["#FFF7ED", "#9A3412"],
+    ["#EFF6FF", "#1E40AF"],
   ];
   const initials = (name) =>
     (name || "").split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0].toUpperCase()).join("") || "··";

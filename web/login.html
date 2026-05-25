@@ -6,7 +6,7 @@
 <title>FIRSTHAND — Sign in</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..900,0..100;1,9..144,300..900,0..100&family=Inter:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css" />
 <style>
   .auth-wrap {
@@ -154,6 +154,79 @@
   }
   .auth-confirm .ghost:hover { color: var(--accent); }
   .auth-confirm .ghost[disabled] { opacity: 0.5; cursor: not-allowed; }
+  .auth-wrap {
+    max-width: 460px;
+  }
+  .auth-top {
+    font-family: var(--read);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  .auth-top a {
+    border-bottom: 0;
+    color: var(--ink);
+  }
+  .auth-card {
+    padding: 28px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: var(--paper-card);
+    box-shadow: 0 28px 70px -50px rgba(17, 24, 39, 0.55);
+  }
+  .auth-title {
+    font-family: var(--serif);
+    font-weight: 650;
+    letter-spacing: -0.025em;
+  }
+  .auth-sub,
+  .auth-field label,
+  .auth-actions button,
+  .auth-toggle,
+  .auth-msg,
+  .auth-confirm .glyph,
+  .auth-confirm .ghost {
+    font-family: var(--read);
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  .auth-sub {
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .auth-field label {
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .auth-field input {
+    font-family: var(--read);
+    border-radius: 6px;
+    background: #FFFFFF;
+  }
+  .auth-actions {
+    flex-wrap: wrap;
+  }
+  .auth-actions button {
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 11px 17px;
+  }
+  .auth-toggle,
+  .auth-confirm .ghost {
+    border-bottom: 0;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .auth-confirm p {
+    font-family: var(--read);
+  }
+  .auth-confirm .target {
+    font-family: var(--read);
+    border-radius: 6px;
+    background: #FFFFFF;
+  }
 </style>
 </head>
 <body>

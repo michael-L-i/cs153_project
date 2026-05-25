@@ -3,177 +3,95 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>FIRSTHAND — Founder Stories, Unfiltered</title>
-<meta name="description" content="A weekly dispatch of long-form case studies on the human side of building companies. Quiet, honest, well-told." />
+<title>FIRSTHAND — Founder stories, unfiltered</title>
+<meta name="description" content="A weekly long-form case study on the human side of building companies." />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..900,0..100;1,9..144,300..900,0..100&family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
 
-<!-- ───── grain overlay ───── -->
-<div class="grain" aria-hidden="true"></div>
+<nav class="nav">
+  <a href="/" class="nav-brand">Firsthand</a>
+  <div class="nav-links">
+    <a href="#directory">Directory</a>
+    <a href="#note">About</a>
+    <span class="nav-session" data-session>—</span>
+  </div>
+</nav>
 
-<!-- ───── masthead ───── -->
-<header class="mast">
-  <div class="mast-row">
-    <span class="meta">Vol. 01 · No. 04</span>
-    <span class="meta meta-mid">Established Spring 2026 · Brooklyn, NY</span>
-    <span class="meta" data-session>—</span>
-  </div>
-  <div class="mast-row mast-rule">
-    <a href="#dir" class="link">The Directory</a>
-    <a href="#letters" class="link">Letters</a>
-    <a href="#about" class="link">About</a>
-    <a href="#sub" class="link link-strong">Subscribe →</a>
-  </div>
-</header>
-
-<!-- ───── HERO / NAMEPLATE ───── -->
-<section class="nameplate">
-  <div class="nameplate-tag">
-    <span class="tag-label">A weekly dispatch on</span>
-    <span class="tag-stamp">↳ how companies actually start</span>
-  </div>
-  <h1 class="nameplate-title">
-    <span class="np-line">First<span class="np-amp">­</span>hand</span>
-  </h1>
-  <p class="nameplate-sub">
-    Founder stories, <em>unfiltered.</em> The quiet middles. The bad first hires. The decision made at 2&nbsp;a.m. that ended up mattering. We collect the parts of the journey nobody puts on stage.
+<section class="hero">
+  <h1 class="hero-title">Founder stories, unfiltered.</h1>
+  <p class="hero-deck">
+    A weekly long-form case study on the human side of building companies — the quiet middles, the bad first hires, the decisions that ended up mattering.
   </p>
-  <div class="nameplate-foot">
-    <div class="foot-col">
-      <span class="kicker">In residence</span>
-      <span class="foot-num" data-live-count>—</span>
-      <span class="foot-cap">founders in the directory</span>
+  <form class="sub-form" onsubmit="event.preventDefault(); this.querySelector('.sub-thanks').hidden=false; this.querySelector('.sub-row').hidden=true; this.querySelector('.sub-fine').hidden=true;">
+    <div class="sub-row">
+      <input type="email" name="email" placeholder="you@somewhere.co" autocomplete="email" required>
+      <button type="submit" class="btn">Subscribe <span class="arrow">→</span></button>
     </div>
-    <div class="foot-col foot-col-cta">
-      <a href="#sub" class="btn-ink">Get the Sunday letter</a>
-      <span class="foot-cap">Free · No tracking · Unsubscribe in one click</span>
-    </div>
-  </div>
+    <p class="sub-fine">Free · one letter on Sundays · unsubscribe anytime.</p>
+    <p class="sub-thanks" hidden><strong>Thanks.</strong> A confirmation note is on its way.</p>
+  </form>
 </section>
 
-<!-- ───── DIRECTORY ───── -->
-<section class="dir" id="dir">
-  <div class="dir-head">
-    <div>
-      <span class="rail-num">The Directory</span>
-      <h2 class="dir-title">The founders<br/><em>in residence.</em></h2>
-      <p class="dir-deck">
-        Every name below has a sandbox in the system — a scoped knowledge base of articles, interviews, and transcripts that we read against when we write.
-      </p>
-    </div>
-  </div>
-
-  <div class="dir-grid" data-dir-grid></div>
+<section class="section section-rule" id="directory">
+  <p class="section-eyebrow">
+    <span>In the directory</span>
+    <span class="count" data-live-count>—</span>
+    <span>founders</span>
+  </p>
+  <ul class="dir-list" data-dir-grid></ul>
   <p class="dir-empty" data-dir-empty hidden>
-    No founders in the directory yet. Run <code>python -m newsletter.cli research "Founder Name"</code> to add one.
+    No founders yet. Run <code>python -m newsletter.cli research "Founder Name"</code> to add one.
   </p>
 </section>
 
-<!-- ───── PULL / EDITOR'S NOTE ───── -->
-<section class="ednote" id="letters">
-  <span class="rail-num center">From the editor</span>
-  <p class="ednote-body">
-    <span class="dropcap dropcap-rust">W</span>e started this because the founder stories we kept reading felt like they had been ironed flat. Same arc, same lessons, same tidy quote near the end. We wanted the wrinkled version. The bit between the last failed pitch and the first one that worked, where the person was still mostly a person, and the company was mostly an idea, and the only thing in the room was a long quiet stretch nobody talks about because it doesn’t make for a good slide.
+<section class="note section-rule" id="note">
+  <h2>From the editors</h2>
+  <p>
+    We started this because the founder stories we kept reading felt like they had been ironed flat. Same arc, same lessons, same tidy quote near the end. We wanted the wrinkled version — the bit between the last failed pitch and the first one that worked, where the person was still mostly a person and the company was mostly an idea.
   </p>
-  <p class="ednote-sign">— The Editors, FIRSTHAND</p>
+  <p class="note-sign">— The editors</p>
 </section>
 
-<!-- ───── SUBSCRIBE CARD ───── -->
-<section class="sub" id="sub">
-  <div class="sub-card">
-    <div class="sub-perf" aria-hidden="true"></div>
-    <div class="sub-head">
-      <span class="sub-stamp">FORM&nbsp;01 · Subscription</span>
-      <span class="sub-issue">Issue No. 04</span>
-    </div>
-    <h2 class="sub-title">A long letter, every Sunday morning.</h2>
-    <p class="sub-deck">
-      One case study, hand-edited, in your inbox. No referral schemes. No “five lessons from this week.” Just one founder, told well. You can leave whenever you want — we will not chase you.
-    </p>
-    <form class="sub-form" onsubmit="event.preventDefault(); this.querySelector('.sub-thanks').hidden=false; this.querySelector('.sub-row').hidden=true;">
-      <div class="sub-row">
-        <label class="sub-field">
-          <span class="sub-label">Your name</span>
-          <input type="text" name="name" placeholder="Mira Okafor" autocomplete="name" required>
-        </label>
-        <label class="sub-field">
-          <span class="sub-label">Your email</span>
-          <input type="email" name="email" placeholder="you@somewhere.co" autocomplete="email" required>
-        </label>
-        <button type="submit" class="btn-ink btn-submit">
-          <span>Subscribe</span>
-          <span class="cta-arrow" aria-hidden="true">→</span>
-        </button>
+<section class="rules">
+  <h2>How we write</h2>
+  <ol>
+    <li>
+      <div>
+        <h4>Talk to the person, not the press release.</h4>
+        <p>Every study begins with hours of recorded conversation. The company arrives later, and only as far as it explains the person.</p>
       </div>
-      <p class="sub-thanks" hidden>
-        <em>Thank you.</em> A confirmation note is on its way — check your inbox, and the promotions tab if it’s shy.
-      </p>
-      <p class="sub-fine">
-        We send one letter on Sunday and a short note on Wednesday when something is worth saying. That is everything.
-      </p>
-    </form>
-  </div>
-</section>
-
-<!-- ───── PRINCIPLES ───── -->
-<section class="creed" id="about">
-  <span class="rail-num">House rules</span>
-  <ol class="creed-list">
-    <li>
-      <span class="creed-num">i.</span>
-      <h4>Talk to the person, not the press release.</h4>
-      <p>Every study begins with at least four hours of recorded interview. The company arrives later, and only as far as it explains the person.</p>
     </li>
     <li>
-      <span class="creed-num">ii.</span>
-      <h4>Cite everything we can.</h4>
-      <p>Where a date, number, or quote can be sourced, it is. The provenance lives in the footnotes — boring on purpose, and load-bearing.</p>
+      <div>
+        <h4>Cite everything we can.</h4>
+        <p>Where a date, number, or quote can be sourced, it is. Provenance lives in the footnotes — boring on purpose, and load-bearing.</p>
+      </div>
     </li>
     <li>
-      <span class="creed-num">iii.</span>
-      <h4>Quiet beats loud.</h4>
-      <p>We are not interested in the loudest founder of the week. We are interested in the founder who is still around in seven years, and what that took.</p>
-    </li>
-    <li>
-      <span class="creed-num">iv.</span>
-      <h4>The subject sees the draft.</h4>
-      <p>They cannot rewrite us, but they can correct us. We have made the call, more than once, to kill a piece because the person was no longer comfortable.</p>
+      <div>
+        <h4>The subject sees the draft.</h4>
+        <p>They can't rewrite us, but they can correct us. We've killed pieces because the person was no longer comfortable.</p>
+      </div>
     </li>
   </ol>
 </section>
 
-<!-- ───── FOOTER MASTHEAD ───── -->
 <footer class="foot">
-  <div class="foot-grid">
-    <div class="foot-cell foot-cell-name">
-      <span class="foot-mark">FH</span>
-      <span class="foot-name">FIRSTHAND</span>
-      <span class="foot-tag">Founder stories, unfiltered.</span>
-    </div>
-    <div class="foot-cell">
-      <span class="foot-h">Sections</span>
-      <a href="#dir">The Directory</a>
-      <a href="#letters">Letters</a>
-      <a href="#about">House Rules</a>
-      <a href="#sub">Subscribe</a>
-    </div>
+  <span class="foot-brand">Firsthand</span>
+  <div class="foot-links">
+    <a href="#directory">Directory</a>
+    <a href="#note">About</a>
   </div>
-  <div class="foot-rule"></div>
-  <div class="foot-fine">
-    <span>© 2026 Firsthand Editions, LLC</span>
-    <span>Set in Fraunces &amp; Newsreader</span>
-    <span>Printed (digitally) in Brooklyn, NY</span>
-  </div>
+  <span>© 2026 Firsthand</span>
 </footer>
 
 <script type="module">
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 (async () => {
-  // --- gate the whole site behind a Supabase session ---
   const here = location.pathname + location.search + location.hash;
   const goLogin = () => location.replace(`/login.html?next=${encodeURIComponent(here)}`);
 
@@ -188,7 +106,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
   } catch (_) { /* fall through to gate */ }
   if (!session) { goLogin(); return; }
 
-  // Sign-out chip in the masthead.
   const sessionEl = document.querySelector("[data-session]");
   if (sessionEl) {
     sessionEl.innerHTML = "";
@@ -198,7 +115,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
     const out = document.createElement("a");
     out.href = "#";
     out.textContent = "sign out";
-    out.style.color = "inherit";
     out.addEventListener("click", async (e) => {
       e.preventDefault();
       await supabase.auth.signOut();
@@ -228,26 +144,23 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
     } catch { return ""; }
   };
 
-  const cardHTML = (founder, idx, totalLive) => {
+  const rowHTML = (founder, idx) => {
     const [bg, ink] = PALETTE[idx % PALETTE.length];
-    const issueNum = String(totalLive - idx).padStart(2, "0");
     const role = founder.company_name
-      ? `${founder.company_name} · ${founder.notes || "Founder dossier"}`
+      ? `${founder.company_name}${founder.notes ? " · " + founder.notes : ""}`
       : (founder.notes || "Founder dossier");
-    const loc = `${founder.source_count} source${founder.source_count === 1 ? "" : "s"} · Added ${fmtDate(founder.created_at)}`;
     return `
-      <a href="/founder.html?id=${encodeURIComponent(founder.id)}" class="card" style="--mono-bg:${bg};--mono-ink:${ink}">
-        <div class="card-mono">
-          <span class="mono-letters">${initials(founder.name) || "··"}</span>
-          <span class="mono-issue">№ ${issueNum}</span>
-        </div>
-        <div class="card-meta">
-          <span class="card-name">${founder.name}</span>
-          <span class="card-role">${role}</span>
-          <span class="card-loc">${loc}</span>
-        </div>
-        <span class="card-arrow">→</span>
-      </a>`;
+      <li>
+        <a href="/founder.html?id=${encodeURIComponent(founder.id)}" class="dir-row">
+          <span class="dir-avatar" style="--mono-bg:${bg};--mono-ink:${ink}">${initials(founder.name) || "··"}</span>
+          <span class="dir-id">
+            <span class="dir-name">${founder.name}</span>
+            <span class="dir-meta">${role}</span>
+          </span>
+          <span class="dir-when">${fmtDate(founder.created_at)}</span>
+          <span class="dir-arrow">→</span>
+        </a>
+      </li>`;
   };
 
   try {
@@ -260,14 +173,12 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
     const grid = document.querySelector("[data-dir-grid]");
     const empty = document.querySelector("[data-dir-empty]");
     if (grid) {
-      grid.innerHTML = founders
-        .map((f, i) => cardHTML(f, i, founders.length))
-        .join("");
+      grid.innerHTML = founders.map((f, i) => rowHTML(f, i)).join("");
     }
     if (empty) empty.hidden = founders.length > 0;
 
     document.querySelectorAll("[data-live-count]").forEach((el) => {
-      el.textContent = String(count).padStart(2, "0");
+      el.textContent = String(count);
     });
   } catch (err) {
     console.warn("founders fetch failed", err);

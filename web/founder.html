@@ -6,13 +6,13 @@
 <title>FIRSTHAND — Conversation</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..900,0..100;1,9..144,300..900,0..100&family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css" />
 <style>
   .chat-wrap {
-    max-width: var(--col-max);
+    max-width: 760px;
     margin: 0 auto;
-    padding: clamp(28px, 4vw, 56px) var(--gutter) 120px;
+    padding: clamp(24px, 4vw, 40px) var(--gutter) 140px;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -20,159 +20,159 @@
   .chat-top {
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
-    margin-bottom: 24px;
-    font-family: var(--mono);
-    font-size: 12px;
+    align-items: center;
+    margin-bottom: 32px;
+    font-size: 13.5px;
     color: var(--ink-mute);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
   }
-  .chat-top a { color: var(--ink-soft); text-decoration: none; border-bottom: 1px solid var(--rule); }
+  .chat-top a { color: var(--ink-soft); transition: color 160ms ease; }
+  .chat-top a:hover { color: var(--accent); }
+  .chat-top .meta-mid { font-family: var(--mono); font-size: 12px; }
   .chat-head {
     display: grid;
-    grid-template-columns: 96px 1fr;
-    gap: 28px;
+    grid-template-columns: 56px 1fr;
+    gap: 18px;
     align-items: center;
-    border-top: 1px solid var(--ink);
-    border-bottom: 1px solid var(--rule);
-    padding: 28px 0;
+    padding: 0 0 32px;
     margin-bottom: 32px;
+    border-bottom: 1px solid var(--rule);
   }
   .chat-mono {
-    width: 96px; height: 96px;
+    width: 56px; height: 56px;
+    border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     background: var(--mono-bg, #E2D3B0);
     color: var(--mono-ink, #7B3A18);
-    font-family: var(--serif);
-    font-size: 42px;
-    font-weight: 500;
-    letter-spacing: -0.02em;
+    font-family: var(--sans);
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
   }
   .chat-id .name {
     display: block;
     font-family: var(--serif);
-    font-size: clamp(28px, 4vw, 44px);
-    font-weight: 400;
-    line-height: 1.05;
+    font-size: clamp(26px, 3.6vw, 34px);
+    font-weight: 500;
+    line-height: 1.1;
     letter-spacing: -0.015em;
+    color: var(--ink);
   }
   .chat-id .sub {
     display: block;
-    margin-top: 8px;
-    font-family: var(--mono);
-    font-size: 12px;
+    margin-top: 4px;
+    font-size: 14px;
     color: var(--ink-mute);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
   }
   .chat-thread {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 22px;
+    gap: 24px;
     margin-bottom: 32px;
   }
   .turn {
     display: flex;
     flex-direction: column;
-    max-width: 78%;
+    max-width: 86%;
   }
   .turn .who {
-    font-family: var(--mono);
-    font-size: 10.5px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
+    font-size: 12.5px;
+    font-weight: 500;
     color: var(--ink-mute);
     margin-bottom: 6px;
   }
   .turn .body {
-    font-family: var(--read);
-    font-size: 17px;
+    font-family: var(--sans);
+    font-size: 16px;
     line-height: 1.6;
     color: var(--ink);
     white-space: pre-wrap;
   }
-  .turn.you { align-self: flex-end; text-align: right; }
+  .turn.you { align-self: flex-end; }
+  .turn.you .who { text-align: right; }
   .turn.you .body {
     background: var(--paper-card);
-    border: 1px solid var(--rule);
-    padding: 14px 18px;
-    border-radius: 2px;
+    padding: 12px 16px;
+    border-radius: 14px;
+    border-bottom-right-radius: 4px;
   }
   .turn.them { align-self: flex-start; }
   .turn.them .body {
-    border-left: 2px solid var(--ink);
-    padding: 2px 0 2px 16px;
+    padding: 0;
   }
   .chat-empty {
     color: var(--ink-mute);
-    font-style: italic;
     align-self: center;
-    padding: 40px 0;
+    padding: 48px 0;
+    font-size: 15px;
   }
   .chat-compose {
     position: sticky;
     bottom: 20px;
     background: var(--paper);
-    border: 1px solid var(--ink);
-    padding: 14px 16px;
+    border: 1px solid var(--rule-strong);
+    border-radius: 14px;
+    padding: 10px 10px 10px 16px;
     display: flex;
-    gap: 12px;
+    gap: 10px;
     align-items: flex-end;
-    box-shadow: 0 12px 30px -20px rgba(27, 24, 20, 0.4);
+    box-shadow: 0 8px 24px -16px rgba(26, 26, 26, 0.25);
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+  }
+  .chat-compose:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(181, 66, 31, 0.12);
   }
   .chat-compose textarea {
     flex: 1;
     border: none;
     background: transparent;
-    font-family: var(--read);
+    font-family: var(--sans);
     font-size: 16px;
     line-height: 1.5;
     color: var(--ink);
     resize: none;
     outline: none;
-    min-height: 24px;
+    min-height: 28px;
     max-height: 200px;
+    padding: 6px 0;
   }
+  .chat-compose textarea::placeholder { color: var(--ink-mute); }
   .chat-compose button {
-    font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    background: var(--ink);
-    color: var(--paper);
-    border: none;
-    padding: 10px 16px;
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 500;
+    background: var(--accent);
+    color: #fff;
+    border: 1px solid var(--accent);
+    padding: 9px 16px;
+    border-radius: 10px;
     cursor: pointer;
+    transition: background 160ms ease;
   }
+  .chat-compose button:hover { background: var(--accent-deep); }
   .chat-compose button:disabled { opacity: 0.5; cursor: not-allowed; }
   .chat-pending {
-    font-family: var(--mono);
-    font-size: 11px;
+    font-size: 13px;
     color: var(--ink-mute);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
     align-self: flex-start;
-    padding: 8px 0;
+    padding: 6px 0;
+    font-style: italic;
   }
   .chat-error {
-    color: var(--rust);
-    font-family: var(--mono);
-    font-size: 12px;
-    padding: 8px 0;
+    color: var(--accent);
+    font-size: 13.5px;
+    padding: 6px 0;
   }
 </style>
 </head>
 <body>
 
-<div class="grain" aria-hidden="true"></div>
-
 <div class="chat-wrap">
   <div class="chat-top">
-    <a href="/">← The Directory</a>
-    <span data-source-line>—</span>
-    <span data-session style="margin-left:auto"></span>
+    <a href="/">← Directory</a>
+    <span class="meta-mid" data-source-line>—</span>
+    <span data-session></span>
   </div>
 
   <header class="chat-head">

@@ -133,6 +133,7 @@ Use this repository as a disciplined, branch-based engineering workspace. The de
   - `wire ZeroEntropy embedding into ingestion pipeline`
   - `document founder sandbox architecture`
 - Avoid `wip`, `misc`, or other low-signal commit messages.
+- After completing any task that touches files, commit the changes without waiting to be asked. Split into logical units when the diff spans unrelated concerns. The user does not want to be prompted before each commit.
 
 ### Worktrees And Existing Branches
 

@@ -472,9 +472,14 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
       pending.remove();
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
+        const detail = err.detail;
+        let msg;
+        if (typeof detail === "string") msg = detail;
+        else if (detail) msg = JSON.stringify(detail);
+        else msg = `Error ${res.status}`;
         const e = document.createElement("div");
         e.className = "chat-error";
-        e.textContent = err.detail || `Error ${res.status}`;
+        e.textContent = msg;
         thread.appendChild(e);
       } else {
         const { reply } = await res.json();

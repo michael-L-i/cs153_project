@@ -68,7 +68,12 @@ def _recall_memories(user_id: str, agent_id: str, message: str) -> list[str]:
     if client is None:
         return []
     try:
-        results = client.search(query=message, user_id=user_id, agent_id=agent_id, limit=MEM0_LIMIT)
+        results = client.search(
+            query=message,
+            version="v2",
+            filters={"AND": [{"user_id": user_id}, {"agent_id": agent_id}]},
+            limit=MEM0_LIMIT,
+        )
     except Exception as exc:
         logger.warning("mem0 search failed: %s", exc)
         return []

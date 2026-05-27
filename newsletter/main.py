@@ -34,6 +34,10 @@ from newsletter.services.writer import build_writer_packet
 research_service = ResearchService()
 
 
+class ChatRequest(BaseModel):
+    message: str
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     create_db_and_tables()
@@ -120,9 +124,6 @@ def create_app() -> FastAPI:
                 for r in rows
             ]
         }
-
-    class ChatRequest(BaseModel):
-        message: str
 
     @app.post("/founders/{subject_id}/chat")
     def post_founder_chat(

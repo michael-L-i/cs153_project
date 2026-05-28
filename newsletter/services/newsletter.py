@@ -10,12 +10,15 @@ refiner), each step a separate Claude call:
   3. Reviewer draft -> critique against a rubric -> final markdown (1 revision)
 
 Everything is grounded strictly in material retrieved from Qdrant, filtered by
-subject_id (the founder sandbox). Output is markdown, returned and saved to disk.
+subject_id (the founder sandbox). The markdown is returned and also saved as a
+JSON file under the repo's ./newsletters dir, one file per founder.
 """
 
 from __future__ import annotations
 
+import json
 import logging
+import re
 from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
@@ -168,13 +171,29 @@ def _review(subject: Subject, brief: str, draft: str) -> str:
     return _complete(system, user)
 
 
-def _save(subject_id: str, markdown: str) -> Path:
-    settings = get_settings()
-    out_dir = Path(settings.object_store_root) / "newsletters"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    path = out_dir / f"{subject_id}-{stamp}.md"
-    path.write_text(markdown, encoding="utf-8")
+# Newsletters are written into the repo (a tracked dir), not the gitignored
+# object store, so generated output lives alongside the code.
+NEWSLETTER_DIR = Path(__file__).resolve().parents[2] / "newsletters"
+
+
+def _slug(name: str) -> str:
+    s = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+    return s or "founder"
+
+
+def _save(subject: Subject, markdown: str) -> Path:
+    NEWSLETTER_DIR.mkdir(parents=True, exist_ok=True)
+    path = NEWSLETTER_DIR / f"{_slug(subject.name)}.json"
+    payload = {
+        "subject_id": subject.id,
+        "name": subject.name,
+        "company_name": subject.company_name,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "markdown": markdown,
+    }
+    path.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
     return path
 
 
@@ -194,6 +213,6 @@ def write_newsletter(session: Session, subject_id: str) -> str:
     if not final:
         final = draft or "(no newsletter generated)"
 
-    path = _save(subject_id, final)
+    path = _save(subject, final)
     logger.info("Wrote newsletter for %s to %s", subject_id, path)
     return final

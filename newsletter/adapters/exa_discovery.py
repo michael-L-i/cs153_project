@@ -28,10 +28,13 @@ HIGH_TRUST_DOMAINS = {
     "substack.com", "medium.com",
 }
 
+# Video discovery is owned by the YouTube Data API channel, so Exa is
+# restricted to articles/press — these domains are excluded from every query.
+EXCLUDE_DOMAINS = ["youtube.com", "youtu.be"]
+
 SEARCH_QUERIES = [
     "{name} founder interview startup journey",
     "{name} CEO how we built {company}",
-    "{name} podcast founder story",
     "{name} entrepreneur early days company",
 ]
 
@@ -72,6 +75,7 @@ def discover_via_exa(subject: Subject, num_results_per_query: int = 5) -> list[D
                 query,
                 num_results=num_results_per_query,
                 type="auto",
+                exclude_domains=EXCLUDE_DOMAINS,
             )
             for r in results.results:
                 url = r.url

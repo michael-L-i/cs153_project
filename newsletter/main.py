@@ -15,6 +15,7 @@ from newsletter.config import get_settings
 from newsletter.db import create_db_and_tables, get_db_session
 from newsletter.models import Dossier, Event, ResearchJob, Source, Subject
 from newsletter.services import chat as chat_service
+from newsletter.services import newsletter as newsletter_service
 from newsletter.schemas import (
     DossierRead,
     EventRead,
@@ -142,6 +143,19 @@ def create_app() -> FastAPI:
         except RuntimeError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         return {"reply": reply}
+
+    @app.post("/founders/{subject_id}/newsletter")
+    def post_founder_newsletter(
+        subject_id: str,
+        session: Session = Depends(get_db_session),
+    ) -> dict:
+        if session.get(Subject, subject_id) is None:
+            raise HTTPException(status_code=404, detail="Founder not found.")
+        try:
+            markdown = newsletter_service.write_newsletter(session, subject_id)
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        return {"markdown": markdown}
 
     @app.post("/subjects", response_model=SubjectRead)
     def create_subject(payload: SubjectCreate, session: Session = Depends(get_db_session)) -> Subject:

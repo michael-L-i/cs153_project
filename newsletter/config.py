@@ -23,6 +23,7 @@ class Settings(BaseSettings):
 
     anthropic_api_key: str | None = Field(default=None, alias="ANTHROPIC_API_KEY")
     anthropic_model: str = Field(default="claude-sonnet-4-6", alias="ANTHROPIC_MODEL")
+    newsletter_model: str = Field(default="claude-opus-4-8", alias="NEWSLETTER_MODEL")
     mem0_api_key: str | None = Field(default=None, alias="MEM0_API_KEY")
 
     supabase_url: str | None = Field(default=None, alias="SUPABASE_URL")

@@ -56,7 +56,7 @@ def _complete(system: str, user: str) -> str:
     settings = get_settings()
     client = _anthropic()
     resp = client.messages.create(
-        model=settings.anthropic_model,
+        model=settings.newsletter_model,
         max_tokens=MAX_TOKENS,
         system=system,
         messages=[{"role": "user", "content": user}],

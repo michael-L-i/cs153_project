@@ -13,3 +13,4 @@ build/
 *.db
 .env
 var/
+newsletters/

@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 from newsletter.adapters.base import AdapterUnavailable
 from newsletter.adapters.exa_discovery import discover_via_exa
 from newsletter.adapters.web import WebAdapter
+from newsletter.adapters.youtube_discovery import discover_youtube_videos
 from newsletter.adapters.youtube import YouTubeAdapter
 from newsletter.db import create_db_and_tables, get_session_factory
 from newsletter.enums import SourcePlatform, SourceStatus
@@ -82,7 +83,7 @@ def run(name: str, context: str = "", *, verbose: bool = True) -> dict:
             ).all()
         }
 
-        discovered = discover_via_exa(subject)
+        discovered = discover_youtube_videos(subject) + discover_via_exa(subject)
         new_count = 0
         for d in discovered:
             if d.url in existing_urls:

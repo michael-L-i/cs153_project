@@ -197,6 +197,96 @@ def _save(subject: Subject, markdown: str) -> Path:
     return path
 
 
+_SLUG_RE = re.compile(r"^[a-z0-9-]+$")
+
+
+def _title_and_excerpt(markdown: str, fallback_title: str) -> tuple[str, str]:
+    """Derive a display title (first H1) and a short excerpt (first prose line)."""
+    title = ""
+    excerpt = ""
+    for raw in markdown.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        if not title and line.startswith("# "):
+            title = line.lstrip("#").strip()
+            continue
+        if not excerpt and not line.startswith("#") and not line.startswith(">"):
+            excerpt = line
+            if title:
+                break
+    if not excerpt:
+        # No non-heading prose found before the title; take the first non-empty line.
+        for raw in markdown.splitlines():
+            line = raw.strip()
+            if line and line != f"# {title}":
+                excerpt = line.lstrip("#").strip()
+                break
+    if len(excerpt) > 160:
+        excerpt = excerpt[:157].rstrip() + "…"
+    return (title or fallback_title), excerpt
+
+
+def _read_newsletter_file(path: Path) -> dict | None:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        logger.warning("skipping unreadable newsletter %s: %s", path, exc)
+        return None
+    if not isinstance(data, dict) or "markdown" not in data:
+        logger.warning("skipping malformed newsletter %s", path)
+        return None
+    data["slug"] = path.stem
+    return data
+
+
+def list_newsletters() -> list[dict]:
+    """Summaries of every saved newsletter, newest first."""
+    if not NEWSLETTER_DIR.is_dir():
+        return []
+    items: list[dict] = []
+    for path in NEWSLETTER_DIR.glob("*.json"):
+        data = _read_newsletter_file(path)
+        if data is None:
+            continue
+        title, excerpt = _title_and_excerpt(data.get("markdown", ""), data.get("name", "Untitled"))
+        items.append(
+            {
+                "slug": data["slug"],
+                "subject_id": data.get("subject_id"),
+                "name": data.get("name"),
+                "company_name": data.get("company_name"),
+                "generated_at": data.get("generated_at"),
+                "title": title,
+                "excerpt": excerpt,
+            }
+        )
+    items.sort(key=lambda d: d.get("generated_at") or "", reverse=True)
+    return items
+
+
+def get_newsletter(slug: str) -> dict | None:
+    """Full newsletter (incl. markdown) for a slug, or None if missing/invalid."""
+    if not slug or not _SLUG_RE.match(slug):
+        return None
+    path = NEWSLETTER_DIR / f"{slug}.json"
+    if not path.is_file():
+        return None
+    data = _read_newsletter_file(path)
+    if data is None:
+        return None
+    title, _ = _title_and_excerpt(data.get("markdown", ""), data.get("name", "Untitled"))
+    return {
+        "slug": data["slug"],
+        "subject_id": data.get("subject_id"),
+        "name": data.get("name"),
+        "company_name": data.get("company_name"),
+        "generated_at": data.get("generated_at"),
+        "title": title,
+        "markdown": data.get("markdown", ""),
+    }
+
+
 def write_newsletter(session: Session, subject_id: str) -> str:
     """Generate and persist a newsletter for a founder; returns the markdown."""
     subject = session.get(Subject, subject_id)

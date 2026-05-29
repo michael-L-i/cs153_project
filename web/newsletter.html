@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FIRSTHAND — Newsletter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..900,0..100;1,9..144,300..900,0..100&family=Inter:wght@400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css" />
+<style>
+  .reader-wrap {
+    max-width: var(--col-prose);
+    margin: 0 auto;
+    padding: 18px var(--gutter) 96px;
+  }
+  .reader-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 32px;
+    font-family: var(--read);
+    font-size: 13px;
+    color: var(--ink-mute);
+  }
+  .reader-top a { color: var(--ink-soft); transition: color 160ms ease; }
+  .reader-top a:hover { color: var(--ink); }
+
+  .reader-head {
+    padding: 0 0 24px;
+    margin-bottom: 32px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .reader-kicker {
+    margin: 0 0 14px;
+    font-family: var(--read);
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent-deep);
+  }
+  .reader-title {
+    margin: 0 0 14px;
+    font-family: var(--serif);
+    font-size: clamp(32px, 4.4vw, 52px);
+    font-weight: 650;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+  .reader-meta {
+    font-family: var(--read);
+    font-size: 14px;
+    color: var(--ink-mute);
+  }
+
+  .prose {
+    font-family: var(--read);
+    font-size: 17px;
+    line-height: 1.72;
+    color: var(--ink-soft);
+  }
+  .prose > :first-child { margin-top: 0; }
+  .prose h1, .prose h2, .prose h3, .prose h4 {
+    font-family: var(--serif);
+    font-weight: 650;
+    line-height: 1.18;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+    margin: 1.8em 0 0.6em;
+  }
+  .prose h1 { font-size: clamp(28px, 3.4vw, 38px); }
+  .prose h2 { font-size: clamp(23px, 2.6vw, 30px); }
+  .prose h3 { font-size: 20px; }
+  .prose h4 { font-size: 17px; }
+  .prose p { margin: 0 0 1.1em; }
+  .prose ul, .prose ol { margin: 0 0 1.1em; padding-left: 1.3em; }
+  .prose li { margin: 0.3em 0; }
+  .prose a { color: var(--accent-deep); border-bottom: 1px solid var(--rule-strong); }
+  .prose a:hover { color: var(--accent); }
+  .prose strong { color: var(--ink); font-weight: 700; }
+  .prose blockquote {
+    margin: 1.4em 0;
+    padding: 4px 0 4px 20px;
+    border-left: 3px solid var(--rule-strong);
+    font-family: var(--serif);
+    font-size: 20px;
+    line-height: 1.5;
+    color: var(--ink);
+  }
+  .prose blockquote p { margin: 0; }
+  .prose code {
+    font-family: var(--mono);
+    font-size: 0.88em;
+    background: var(--paper-deep);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--ink);
+  }
+  .prose pre {
+    background: var(--paper-deep);
+    padding: 16px;
+    border-radius: 8px;
+    overflow-x: auto;
+  }
+  .prose pre code { background: none; padding: 0; }
+  .prose hr { border: 0; border-top: 1px solid var(--rule); margin: 2em 0; }
+
+  .reader-msg {
+    font-family: var(--read);
+    font-size: 15px;
+    color: var(--ink-mute);
+    padding: 48px 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="reader-wrap">
+  <div class="reader-top">
+    <a href="/#newsletters">← All newsletters</a>
+    <span data-session></span>
+  </div>
+
+  <header class="reader-head" data-head hidden>
+    <p class="reader-kicker">Newsletter</p>
+    <h1 class="reader-title" data-title>—</h1>
+    <p class="reader-meta" data-meta>—</p>
+  </header>
+
+  <article class="prose" data-body></article>
+  <p class="reader-msg" data-msg>Loading…</p>
+</div>
+
+<script type="module">
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { marked } from "https://esm.sh/marked@12";
+(async () => {
+  const here = location.pathname + location.search;
+  const goLogin = () => location.replace(`/login.html?next=${encodeURIComponent(here)}`);
+
+  let supabase = null;
+  let session = null;
+  try {
+    const cfg = await (await fetch("/auth/config")).json();
+    if (cfg.supabase_url && cfg.supabase_anon_key) {
+      supabase = createClient(cfg.supabase_url, cfg.supabase_anon_key);
+      ({ data: { session } } = await supabase.auth.getSession());
+    }
+  } catch (_) { /* fall through to gate */ }
+  if (!session) { goLogin(); return; }
+
+  const sessionEl = document.querySelector("[data-session]");
+  sessionEl.innerHTML = "";
+  const who = document.createElement("span");
+  who.textContent = session.user.email || "signed in";
+  const sep = document.createTextNode(" · ");
+  const out = document.createElement("a");
+  out.href = "#"; out.textContent = "sign out";
+  out.addEventListener("click", async (e) => {
+    e.preventDefault();
+    await supabase.auth.signOut();
+    goLogin();
+  });
+  sessionEl.append(who, sep, out);
+
+  const fmtDate = (iso) => {
+    try {
+      return new Date(iso).toLocaleDateString(undefined, {
+        month: "long", day: "numeric", year: "numeric",
+      });
+    } catch { return ""; }
+  };
+
+  const msg = document.querySelector("[data-msg]");
+  const head = document.querySelector("[data-head]");
+  const body = document.querySelector("[data-body]");
+
+  const slug = new URLSearchParams(location.search).get("slug");
+  if (!slug) { msg.textContent = "No newsletter selected."; return; }
+
+  try {
+    const res = await fetch(`/newsletters/${encodeURIComponent(slug)}`);
+    if (res.status === 404) { msg.textContent = "Newsletter not found."; return; }
+    if (!res.ok) { msg.textContent = "Could not load newsletter."; return; }
+
+    const nl = await res.json();
+    const meta = [nl.name, fmtDate(nl.generated_at)].filter(Boolean).join(" · ");
+    document.querySelector("[data-title]").textContent = nl.title || nl.name || "Newsletter";
+    document.querySelector("[data-meta]").textContent = meta;
+    document.title = `FIRSTHAND — ${nl.title || nl.name || "Newsletter"}`;
+
+    // The leading H1 is shown in the header; drop it from the body to avoid a repeat.
+    const md = (nl.markdown || "").replace(/^\s*#\s+.*(\r?\n)+/, "");
+    body.innerHTML = marked.parse(md);
+
+    head.hidden = false;
+    msg.hidden = true;
+  } catch (err) {
+    msg.textContent = "Network error.";
+  }
+})();
+</script>
+</body>
+</html>

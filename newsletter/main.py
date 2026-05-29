@@ -157,6 +157,18 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         return {"markdown": markdown}
 
+    @app.get("/newsletters")
+    def list_newsletters() -> dict:
+        items = newsletter_service.list_newsletters()
+        return {"count": len(items), "newsletters": items}
+
+    @app.get("/newsletters/{slug}")
+    def get_newsletter(slug: str) -> dict:
+        item = newsletter_service.get_newsletter(slug)
+        if item is None:
+            raise HTTPException(status_code=404, detail="Newsletter not found.")
+        return item
+
     @app.post("/subjects", response_model=SubjectRead)
     def create_subject(payload: SubjectCreate, session: Session = Depends(get_db_session)) -> Subject:
         subject = Subject(**payload.model_dump())

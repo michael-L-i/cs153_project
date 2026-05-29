@@ -14,3 +14,4 @@ build/
 .env
 var/
 newsletters/
+.claude/

@@ -127,6 +127,39 @@ def _title_from(message: str) -> str:
     return title or "New conversation"
 
 
+def _generate_title(message: str, reply: str) -> str:
+    """Ask a fast model for a short, descriptive thread title.
+
+    Falls back to a truncation of the first user message on any error so titling
+    can never break the chat flow.
+    """
+    settings = get_settings()
+    try:
+        resp = _anthropic().messages.create(
+            model=settings.anthropic_title_model,
+            max_tokens=24,
+            system=(
+                "Generate a concise, specific title (3-6 words) for a chat conversation, "
+                "based on the user's first message and the reply. Reply with ONLY the title — "
+                "no quotes, no surrounding punctuation, no trailing period."
+            ),
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"First message:\n{message}\n\nReply:\n{reply}\n\nTitle:",
+                }
+            ],
+        )
+        raw = "".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
+        title = " ".join(raw.split()).strip().strip('"').strip("'").rstrip(".").strip()
+        if len(title) > 60:
+            title = title[:57].rstrip() + "…"
+        return title or _title_from(message)
+    except Exception as exc:  # noqa: BLE001 — titling must never break chat
+        logger.warning("title generation failed: %s", exc)
+        return _title_from(message)
+
+
 def _get_owned_conversation(session: Session, conversation_id: str, user_id: str) -> Conversation:
     """Load a conversation, raising if it doesn't exist or isn't owned by user_id."""
     convo = session.get(Conversation, conversation_id)
@@ -200,9 +233,9 @@ def respond(session: Session, conversation_id: str, message: str, user_id: str) 
 
     session.add(Message(conversation_id=conversation_id, subject_id=subject.id, user_id=user_id, role="user", content=message))
     session.add(Message(conversation_id=conversation_id, subject_id=subject.id, user_id=user_id, role="assistant", content=reply))
-    # First user message names the conversation; bump updated_at so it sorts to the top.
+    # First exchange names the conversation (LLM-generated); bump updated_at so it sorts up.
     if not convo.title:
-        convo.title = _title_from(message)
+        convo.title = _generate_title(message, reply)
     convo.updated_at = utc_now()
     session.commit()
 

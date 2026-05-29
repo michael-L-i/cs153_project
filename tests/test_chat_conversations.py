@@ -40,6 +40,7 @@ def chat_client(client, monkeypatch):
     monkeypatch.setattr(chat_service, "_retrieve_context", lambda *a, **k: [])
     monkeypatch.setattr(chat_service, "_recall_memories", lambda *a, **k: [])
     monkeypatch.setattr(chat_service, "_remember", lambda *a, **k: None)
+    monkeypatch.setattr(chat_service, "_generate_title", lambda *a, **k: "Generated Title")
 
     client.app.dependency_overrides[get_current_user] = lambda: AuthUser(id="user-1", email="u@example.com")
     client._llm_calls = calls
@@ -72,8 +73,8 @@ def test_conversation_lifecycle_and_context_scoping(chat_client):
     assert chat_client.post(f"/founders/{sid}/conversations/{conv_a}/chat", json={"message": "Hello there"}).status_code == 200
     assert chat_client.post(f"/founders/{sid}/conversations/{conv_a}/chat", json={"message": "Second one"}).status_code == 200
 
-    # First user message becomes the title.
-    assert chat_client.get(f"/founders/{sid}/conversations").json()["conversations"][0]["title"] == "Hello there"
+    # First exchange produces an LLM-generated title.
+    assert chat_client.get(f"/founders/{sid}/conversations").json()["conversations"][0]["title"] == "Generated Title"
 
     # Messages are persisted in order (2 user + 2 assistant).
     msgs = chat_client.get(f"/founders/{sid}/conversations/{conv_a}/messages").json()["messages"]

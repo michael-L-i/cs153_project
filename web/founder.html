@@ -45,7 +45,7 @@
   .side-back:hover { color: var(--ink); }
   .side-founder {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 12px;
     min-width: 0;
   }
@@ -67,8 +67,8 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    gap: 3px;
+    gap: 2px;
+    padding-top: 1px;
   }
   .side-founder .name {
     font-family: var(--serif);
@@ -82,8 +82,10 @@
     text-overflow: ellipsis;
   }
   .side-founder .sub {
+    padding-top: 0;
     font-family: var(--read);
     font-size: 11.5px;
+    line-height: 1.25;
     color: var(--ink-mute);
     white-space: nowrap;
     overflow: hidden;

@@ -9,48 +9,49 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..900,0..100;1,9..144,300..900,0..100&family=Inter:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css" />
 <style>
-  .chat-wrap {
-    max-width: 740px;
-    margin: 0 auto;
-    padding: 18px var(--gutter) 160px;
-    min-height: 100vh;
+  html, body { height: 100%; }
+  body { overflow: hidden; }
+
+  .app {
     display: flex;
-    flex-direction: column;
-  }
-  .chat-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 16px;
-    margin-bottom: 28px;
-    font-family: var(--read);
-    font-size: 13px;
-    color: var(--ink-mute);
-  }
-  .chat-top a {
-    color: var(--ink-soft);
-    border-bottom: 0;
-    transition: color 160ms ease;
-  }
-  .chat-top a:hover { color: var(--ink); }
-  .chat-top .meta-mid {
-    font-family: var(--mono);
-    font-size: 11.5px;
-    color: var(--ink-mute);
-    letter-spacing: 0.01em;
+    height: 100vh;
+    width: 100%;
   }
 
-  .chat-head {
+  /* ─── sidebar ─── */
+  .side {
+    width: 288px;
+    flex-shrink: 0;
     display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 0 0 18px;
-    margin-bottom: 28px;
+    flex-direction: column;
+    background: var(--paper-card, #F3EFE6);
+    border-right: 1px solid var(--rule);
+    height: 100%;
+  }
+  .side-top {
+    padding: 20px 18px 16px;
     border-bottom: 1px solid var(--rule);
   }
-  .chat-mono {
-    width: 32px;
-    height: 32px;
+  .side-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--read);
+    font-size: 12.5px;
+    color: var(--ink-mute);
+    margin-bottom: 16px;
+    transition: color 160ms ease;
+  }
+  .side-back:hover { color: var(--ink); }
+  .side-founder {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    min-width: 0;
+  }
+  .side-mono {
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -58,51 +59,224 @@
     background: var(--mono-bg, #E2D3B0);
     color: var(--mono-ink, #7B3A18);
     font-family: var(--sans);
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
-    letter-spacing: 0.01em;
     flex-shrink: 0;
   }
-  .chat-id {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
+  .side-founder .meta {
     min-width: 0;
-    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-top: 1px;
   }
-  .chat-id .name {
+  .side-founder .name {
     font-family: var(--serif);
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 600;
-    line-height: 1.2;
+    line-height: 1.15;
     letter-spacing: -0.01em;
     color: var(--ink);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .chat-id .sub {
+  .side-founder .sub {
+    padding-top: 0;
     font-family: var(--read);
-    font-size: 13px;
+    font-size: 11.5px;
+    line-height: 1.25;
     color: var(--ink-mute);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    min-width: 0;
   }
 
-  .chat-thread {
+  .new-btn {
+    margin: 14px 14px 6px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-family: var(--read);
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--ink);
+    background: var(--paper, #FAF7F2);
+    border: 1px solid var(--rule-strong);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: border-color 160ms ease, background 160ms ease, transform 80ms ease;
+  }
+  .new-btn:hover { border-color: var(--ink-soft); background: #fff; }
+  .new-btn:active { transform: scale(0.99); }
+  .new-btn .plus { font-size: 16px; line-height: 1; margin-top: -1px; }
+
+  .convo-list {
     flex: 1;
+    overflow-y: auto;
+    padding: 8px 10px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .convo-list-empty {
+    font-family: var(--read);
+    font-size: 12.5px;
+    color: var(--ink-mute);
+    font-style: italic;
+    padding: 12px 8px;
+  }
+  .convo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: background 140ms ease, border-color 140ms ease;
+    position: relative;
+  }
+  .convo:hover { background: rgba(0,0,0,0.035); }
+  .convo.active {
+    background: var(--paper, #FAF7F2);
+    border-color: var(--rule-strong);
+  }
+  .convo .title {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--read);
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.35;
+  }
+  .convo.active .title { color: var(--ink); font-weight: 500; }
+  .convo .acts {
+    display: flex;
+    gap: 2px;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 140ms ease;
+  }
+  .convo:hover .acts, .convo.active .acts { opacity: 1; }
+  .convo .acts button {
+    border: none;
+    background: transparent;
+    color: var(--ink-mute);
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+    padding: 4px;
+    border-radius: 6px;
+    transition: color 140ms ease, background 140ms ease;
+  }
+  .convo .acts button:hover { color: var(--ink); background: rgba(0,0,0,0.06); }
+  .convo .acts button.del:hover { color: var(--accent); }
+  .convo .title-input {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--read);
+    font-size: 13.5px;
+    color: var(--ink);
+    background: #fff;
+    border: 1px solid var(--rule-strong);
+    border-radius: 6px;
+    padding: 4px 7px;
+    outline: none;
+  }
+
+  .side-foot {
+    padding: 12px 16px;
+    border-top: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-mute);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .side-foot a { color: var(--ink-soft); transition: color 160ms ease; }
+  .side-foot a:hover { color: var(--ink); }
+  .side-foot .who {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ─── main / chat ─── */
+  .main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--paper, #FAF7F2);
+    position: relative;
+  }
+  .main-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px var(--gutter);
+    border-bottom: 1px solid var(--rule);
+    flex-shrink: 0;
+  }
+  .hamburger {
+    display: none;
+    border: 1px solid var(--rule-strong);
+    background: transparent;
+    border-radius: 9px;
+    width: 34px;
+    height: 34px;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink-soft);
+    flex-shrink: 0;
+    font-size: 16px;
+  }
+  .head-title {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .head-title .convo-name {
+    font-family: var(--serif);
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .head-title .src-line {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-mute);
+  }
+
+  .scroll {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+  }
+  .chat-thread {
+    max-width: 740px;
+    margin: 0 auto;
+    padding: 28px var(--gutter) 132px;
     display: flex;
     flex-direction: column;
     gap: 28px;
-    margin-bottom: 32px;
   }
-  .turn {
-    display: flex;
-    flex-direction: column;
-  }
-  .turn .who { display: none; }
+  .turn { display: flex; flex-direction: column; }
   .turn .body {
     font-family: var(--read);
     font-size: 15.5px;
@@ -111,46 +285,54 @@
     white-space: pre-wrap;
     word-wrap: break-word;
   }
-  .turn.you {
-    align-self: flex-end;
-    max-width: 80%;
-  }
+  .turn.you { align-self: flex-end; max-width: 80%; }
   .turn.you .body {
-    background: var(--paper-card, #F5F1EA);
+    background: var(--paper-card, #F3EFE6);
     padding: 11px 16px;
     border-radius: 18px;
     border: 1px solid var(--rule);
   }
-  .turn.them {
-    align-self: stretch;
-    max-width: 100%;
-  }
-  .turn.them .body {
-    padding: 0;
-    background: transparent;
-    border: none;
-  }
+  .turn.them { align-self: stretch; max-width: 100%; }
+  .turn.them .body { padding: 0; background: transparent; border: none; }
 
   .chat-empty {
     color: var(--ink-mute);
     align-self: center;
-    padding: 64px 0;
+    padding: 72px 0;
     font-family: var(--read);
     font-size: 14px;
     font-style: italic;
   }
+  .chat-pending {
+    font-family: var(--read);
+    font-size: 14px;
+    color: var(--ink-mute);
+    align-self: flex-start;
+    padding: 4px 0;
+    font-style: italic;
+  }
+  .chat-error {
+    font-family: var(--read);
+    color: #B5421F;
+    font-size: 13.5px;
+    padding: 6px 12px;
+    background: rgba(181, 66, 31, 0.06);
+    border-radius: 8px;
+    align-self: flex-start;
+    max-width: 100%;
+  }
 
-  .chat-dock {
-    position: fixed;
+  .dock {
+    position: absolute;
     left: 0;
     right: 0;
     bottom: 0;
-    padding: 56px var(--gutter) 20px;
+    padding: 64px var(--gutter) 20px;
     background: linear-gradient(
       to bottom,
-      rgba(251, 248, 242, 0) 0%,
-      rgba(251, 248, 242, 0.85) 45%,
-      var(--paper, #FBF8F2) 75%
+      rgba(250, 247, 242, 0) 0%,
+      rgba(250, 247, 242, 0.85) 48%,
+      var(--paper, #FAF7F2) 80%
     );
     pointer-events: none;
     z-index: 10;
@@ -159,8 +341,8 @@
     pointer-events: auto;
     max-width: 740px;
     margin: 0 auto;
-    background: var(--paper, #FBF8F2);
-    border: 1px solid var(--rule);
+    background: var(--paper, #FAF7F2);
+    border: 1px solid var(--rule-strong);
     border-radius: 22px;
     padding: 10px 10px 10px 18px;
     display: flex;
@@ -205,64 +387,80 @@
   .chat-compose button:active { transform: scale(0.97); }
   .chat-compose button:disabled { opacity: 0.35; cursor: not-allowed; }
 
-  .chat-pending {
-    font-family: var(--read);
-    font-size: 14px;
-    color: var(--ink-mute);
-    align-self: flex-start;
-    padding: 4px 0;
-    font-style: italic;
-  }
-  .chat-error {
-    font-family: var(--read);
-    color: #B5421F;
-    font-size: 13.5px;
-    padding: 6px 12px;
-    background: rgba(181, 66, 31, 0.06);
-    border-radius: 8px;
-    align-self: flex-start;
-    max-width: 100%;
+  .scrim {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(26, 26, 26, 0.32);
+    z-index: 20;
   }
 
-  @media (max-width: 640px) {
-    .chat-wrap { padding-bottom: 140px; }
-    .chat-id { flex-direction: column; align-items: flex-start; gap: 2px; }
-    .chat-id .name { font-size: 16px; }
-    .chat-id .sub { font-size: 12.5px; }
-    .turn.you { max-width: 92%; }
-    .chat-dock { padding: 40px var(--gutter) 12px; }
+  @media (max-width: 860px) {
+    .hamburger { display: flex; }
+    .side {
+      position: fixed;
+      left: 0; top: 0; bottom: 0;
+      z-index: 30;
+      transform: translateX(-100%);
+      transition: transform 220ms ease;
+      box-shadow: 0 0 40px -10px rgba(26,26,26,0.3);
+    }
+    .side.open { transform: translateX(0); }
+    .scrim.show { display: block; }
   }
 </style>
 </head>
 <body>
 
-<div class="chat-wrap">
-  <div class="chat-top">
-    <a href="/">← Directory</a>
-    <span class="meta-mid" data-source-line>—</span>
-    <span data-session></span>
-  </div>
-
-  <header class="chat-head">
-    <div class="chat-mono" data-mono>··</div>
-    <div class="chat-id">
-      <span class="name" data-name>Loading…</span>
-      <span class="sub" data-sub>—</span>
+<div class="app">
+  <aside class="side" data-side>
+    <div class="side-top">
+      <a class="side-back" href="/">← Directory</a>
+      <div class="side-founder">
+        <div class="side-mono" data-mono>··</div>
+        <div class="meta">
+          <div class="name" data-name>Loading…</div>
+          <div class="sub" data-sub>—</div>
+        </div>
+      </div>
     </div>
-  </header>
 
-  <div class="chat-thread" data-thread>
-    <div class="chat-empty" data-empty>Say something to start the conversation.</div>
-  </div>
+    <button class="new-btn" data-new><span class="plus">+</span> New conversation</button>
 
+    <div class="convo-list" data-list>
+      <div class="convo-list-empty" data-list-empty>No conversations yet.</div>
+    </div>
+
+    <div class="side-foot">
+      <span class="who" data-session>—</span>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="main-head">
+      <button class="hamburger" data-burger aria-label="Toggle conversations">☰</button>
+      <div class="head-title">
+        <span class="convo-name" data-convo-name>—</span>
+        <span class="src-line" data-source-line>—</span>
+      </div>
+    </header>
+
+    <div class="scroll" data-scroll>
+      <div class="chat-thread" data-thread>
+        <div class="chat-empty" data-empty>Say something to start the conversation.</div>
+      </div>
+    </div>
+
+    <div class="dock">
+      <form class="chat-compose" data-form>
+        <textarea data-input placeholder="Ask a question. Shift+Enter for newline." rows="1"></textarea>
+        <button type="submit" data-send>Send →</button>
+      </form>
+    </div>
+  </main>
 </div>
 
-<div class="chat-dock">
-  <form class="chat-compose" data-form>
-    <textarea data-input placeholder="Ask a question. Shift+Enter for newline." rows="1"></textarea>
-    <button type="submit" data-send>Send →</button>
-  </form>
-</div>
+<div class="scrim" data-scrim></div>
 
 <script type="module">
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -275,15 +473,14 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
   let session = null;
   try {
     const cfg = await (await fetch("/auth/config")).json();
-    if (!cfg.supabase_url || !cfg.supabase_anon_key) {
-      document.querySelector("[data-session]").textContent = "auth not configured";
-    } else {
+    if (cfg.supabase_url && cfg.supabase_anon_key) {
       supabase = createClient(cfg.supabase_url, cfg.supabase_anon_key);
       ({ data: { session } } = await supabase.auth.getSession());
     }
   } catch (_) { /* fall through */ }
   if (!session) { goLogin(); return; }
 
+  // signed-in footer
   const sessionEl = document.querySelector("[data-session]");
   sessionEl.innerHTML = "";
   const who = document.createElement("span");
@@ -308,21 +505,27 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
     return res;
   };
 
+  // --- avatar helpers ---
   const PALETTE = [
-    ["#F7F7F2", "#111827"],
-    ["#EEF5FF", "#1D4ED8"],
-    ["#FFF3EA", "#C2410C"],
-    ["#EEF8F3", "#047857"],
-    ["#F4F1FF", "#6D28D9"],
-    ["#F8FAFC", "#334155"],
-    ["#FFF7ED", "#9A3412"],
-    ["#EFF6FF", "#1E40AF"],
+    ["#F7F7F2", "#111827"], ["#EEF5FF", "#1D4ED8"], ["#FFF3EA", "#C2410C"],
+    ["#EEF8F3", "#047857"], ["#F4F1FF", "#6D28D9"], ["#F8FAFC", "#334155"],
+    ["#FFF7ED", "#9A3412"], ["#EFF6FF", "#1E40AF"],
   ];
   const initials = (name) =>
     (name || "").split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0].toUpperCase()).join("") || "··";
   const hash = (s) => {
     let h = 0; for (const ch of s || "") h = (h * 31 + ch.charCodeAt(0)) | 0;
     return Math.abs(h);
+  };
+  const relTime = (iso) => {
+    const t = new Date(iso).getTime();
+    if (!t) return "";
+    const diff = (Date.now() - t) / 1000;
+    if (diff < 60) return "just now";
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
+    return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
   };
 
   const params = new URLSearchParams(location.search);
@@ -332,30 +535,52 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
     return;
   }
 
+  // --- element refs ---
   const thread = document.querySelector("[data-thread]");
   const emptyEl = document.querySelector("[data-empty]");
+  const scroll = document.querySelector("[data-scroll]");
   const input = document.querySelector("[data-input]");
   const form = document.querySelector("[data-form]");
   const sendBtn = document.querySelector("[data-send]");
+  const listEl = document.querySelector("[data-list]");
+  const listEmpty = document.querySelector("[data-list-empty]");
+  const newBtn = document.querySelector("[data-new]");
+  const convoName = document.querySelector("[data-convo-name]");
+  const side = document.querySelector("[data-side]");
+  const scrim = document.querySelector("[data-scrim]");
+
+  // --- mobile drawer ---
+  const openSide = () => { side.classList.add("open"); scrim.classList.add("show"); };
+  const closeSide = () => { side.classList.remove("open"); scrim.classList.remove("show"); };
+  document.querySelector("[data-burger]").addEventListener("click", () =>
+    side.classList.contains("open") ? closeSide() : openSide());
+  scrim.addEventListener("click", closeSide);
+
+  // --- state ---
+  let conversations = [];
+  let activeId = null;
+
+  const scrollToEnd = () => { scroll.scrollTop = scroll.scrollHeight; };
 
   const renderTurn = (role, content) => {
-    if (emptyEl && !emptyEl.hidden) emptyEl.hidden = true;
+    if (emptyEl) emptyEl.hidden = true;
     const div = document.createElement("div");
     div.className = "turn " + (role === "user" ? "you" : "them");
-    const who = document.createElement("span");
-    who.className = "who";
-    who.textContent = role === "user" ? "You" : (window.__founderName || "Them");
     const body = document.createElement("div");
     body.className = "body";
     body.textContent = content;
-    div.appendChild(who);
     div.appendChild(body);
     thread.appendChild(div);
-    window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+    scrollToEnd();
     return div;
   };
 
-  // Load founder metadata
+  const clearThread = () => {
+    thread.querySelectorAll(".turn, .chat-pending, .chat-error").forEach(n => n.remove());
+    if (emptyEl) emptyEl.hidden = false;
+  };
+
+  // --- founder metadata ---
   try {
     const res = await fetch(`/founders/${encodeURIComponent(id)}`);
     if (res.ok) {
@@ -364,14 +589,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
       document.querySelector("[data-name]").textContent = f.name;
       const subBits = [];
       if (f.company_name) subBits.push(f.company_name);
-      if (f.notes) subBits.push(f.notes);
       document.querySelector("[data-sub]").textContent = subBits.join(" · ") || "Founder dossier";
       document.querySelector("[data-source-line]").textContent =
         `${f.source_count} source${f.source_count === 1 ? "" : "s"} in the sandbox`;
       const [bg, ink] = PALETTE[hash(f.id) % PALETTE.length];
       const mono = document.querySelector("[data-mono]");
-      mono.style.setProperty("--mono-bg", bg);
-      mono.style.setProperty("--mono-ink", ink);
       mono.style.background = bg;
       mono.style.color = ink;
       mono.textContent = initials(f.name);
@@ -385,19 +607,156 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
     return;
   }
 
-  // Hydrate prior messages
-  try {
-    const res = await authFetch(`/founders/${encodeURIComponent(id)}/messages`);
-    if (res.ok) {
-      const { messages } = await res.json();
-      if (messages && messages.length) {
-        emptyEl.hidden = true;
-        for (const m of messages) renderTurn(m.role, m.content);
+  // --- conversation sidebar ---
+  const titleOf = (c) => c.title && c.title.trim() ? c.title : "New conversation";
+
+  const renderList = () => {
+    listEl.querySelectorAll(".convo").forEach(n => n.remove());
+    listEmpty.hidden = conversations.length > 0;
+    for (const c of conversations) {
+      const row = document.createElement("div");
+      row.className = "convo" + (c.id === activeId ? " active" : "");
+      row.dataset.cid = c.id;
+
+      const title = document.createElement("span");
+      title.className = "title";
+      title.textContent = titleOf(c);
+      title.title = titleOf(c);
+
+      const acts = document.createElement("span");
+      acts.className = "acts";
+      const renameB = document.createElement("button");
+      renameB.type = "button"; renameB.textContent = "✎"; renameB.title = "Rename";
+      const delB = document.createElement("button");
+      delB.type = "button"; delB.className = "del"; delB.textContent = "✕"; delB.title = "Delete";
+      acts.append(renameB, delB);
+
+      row.append(title, acts);
+      listEl.appendChild(row);
+
+      row.addEventListener("click", (e) => {
+        if (e.target.closest(".acts")) return;
+        selectConversation(c.id);
+        closeSide();
+      });
+      renameB.addEventListener("click", (e) => { e.stopPropagation(); beginRename(c, row, title); });
+      delB.addEventListener("click", (e) => { e.stopPropagation(); deleteConversation(c); });
+    }
+  };
+
+  const setActive = (cid) => {
+    activeId = cid;
+    const c = conversations.find(x => x.id === cid);
+    convoName.textContent = c ? titleOf(c) : "—";
+    listEl.querySelectorAll(".convo").forEach(r =>
+      r.classList.toggle("active", r.dataset.cid === cid));
+  };
+
+  const loadConversations = async () => {
+    const res = await authFetch(`/founders/${encodeURIComponent(id)}/conversations`);
+    const { conversations: rows } = await res.json();
+    conversations = rows || [];
+    renderList();
+    return conversations;
+  };
+
+  const loadMessages = async (cid) => {
+    clearThread();
+    try {
+      const res = await authFetch(`/founders/${encodeURIComponent(id)}/conversations/${cid}/messages`);
+      if (res.ok) {
+        const { messages } = await res.json();
+        for (const m of (messages || [])) renderTurn(m.role, m.content);
+      }
+    } catch (_) { /* ignore */ }
+    scrollToEnd();
+  };
+
+  const selectConversation = async (cid) => {
+    if (cid === activeId) return;
+    setActive(cid);
+    await loadMessages(cid);
+    input.focus();
+  };
+
+  const createConversation = async () => {
+    const res = await authFetch(`/founders/${encodeURIComponent(id)}/conversations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    const convo = await res.json();
+    conversations.unshift(convo);
+    renderList();
+    setActive(convo.id);
+    clearThread();
+    return convo;
+  };
+
+  newBtn.addEventListener("click", async () => {
+    try {
+      await createConversation();
+      closeSide();
+      input.focus();
+    } catch (_) { /* ignore */ }
+  });
+
+  const beginRename = (c, row, titleEl) => {
+    const inputEl = document.createElement("input");
+    inputEl.className = "title-input";
+    inputEl.value = titleOf(c);
+    row.replaceChild(inputEl, titleEl);
+    inputEl.focus();
+    inputEl.select();
+    let done = false;
+    const commit = async (save) => {
+      if (done) return;
+      done = true;
+      const next = inputEl.value.trim();
+      if (save && next && next !== titleOf(c)) {
+        try {
+          const res = await authFetch(`/founders/${encodeURIComponent(id)}/conversations/${c.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title: next }),
+          });
+          if (res.ok) {
+            const updated = await res.json();
+            c.title = updated.title;
+          }
+        } catch (_) { /* ignore */ }
+      }
+      renderList();
+      if (c.id === activeId) convoName.textContent = titleOf(c);
+    };
+    inputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); commit(true); }
+      else if (e.key === "Escape") { e.preventDefault(); commit(false); }
+    });
+    inputEl.addEventListener("blur", () => commit(true));
+  };
+
+  const deleteConversation = async (c) => {
+    if (!confirm(`Delete "${titleOf(c)}"? This can't be undone.`)) return;
+    try {
+      const res = await authFetch(`/founders/${encodeURIComponent(id)}/conversations/${c.id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) return;
+    } catch (_) { return; }
+    conversations = conversations.filter(x => x.id !== c.id);
+    if (c.id === activeId) {
+      if (conversations.length) {
+        activeId = null;
+        await selectConversation(conversations[0].id);
+      } else {
+        await createConversation();
       }
     }
-  } catch (_) { /* ignore */ }
+    renderList();
+  };
 
-  // Autosize textarea
+  // --- send ---
   const autosize = () => {
     input.style.height = "auto";
     input.style.height = Math.min(input.scrollHeight, 200) + "px";
@@ -406,7 +765,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
   const send = async () => {
     const message = input.value.trim();
-    if (!message) return;
+    if (!message || !activeId) return;
+    const cid = activeId;
+    const wasUntitled = !(conversations.find(c => c.id === cid)?.title || "").trim();
+
     input.value = "";
     autosize();
     renderTurn("user", message);
@@ -416,9 +778,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
     pending.className = "chat-pending";
     pending.textContent = "thinking…";
     thread.appendChild(pending);
+    scrollToEnd();
 
     try {
-      const res = await authFetch(`/founders/${encodeURIComponent(id)}/chat`, {
+      const res = await authFetch(`/founders/${encodeURIComponent(id)}/conversations/${cid}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message }),
@@ -427,17 +790,20 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         const detail = err.detail;
-        let msg;
-        if (typeof detail === "string") msg = detail;
-        else if (detail) msg = JSON.stringify(detail);
-        else msg = `Error ${res.status}`;
+        const msg = typeof detail === "string" ? detail : (detail ? JSON.stringify(detail) : `Error ${res.status}`);
         const e = document.createElement("div");
         e.className = "chat-error";
         e.textContent = msg;
         thread.appendChild(e);
+        scrollToEnd();
       } else {
         const { reply } = await res.json();
         renderTurn("assistant", reply);
+        // First reply names the conversation and bumps it to the top — refresh the list.
+        if (wasUntitled) {
+          await loadConversations();
+          setActive(cid);
+        }
       }
     } catch (err) {
       pending.remove();
@@ -445,6 +811,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
       e.className = "chat-error";
       e.textContent = "Network error.";
       thread.appendChild(e);
+      scrollToEnd();
     } finally {
       sendBtn.disabled = false;
       input.focus();
@@ -453,11 +820,16 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
   form.addEventListener("submit", (e) => { e.preventDefault(); send(); });
   input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      send();
-    }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
   });
+
+  // --- boot ---
+  await loadConversations();
+  if (conversations.length) {
+    await selectConversation(conversations[0].id);
+  } else {
+    await createConversation();
+  }
   input.focus();
 })();
 </script>

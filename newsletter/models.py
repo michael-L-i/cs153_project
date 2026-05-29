@@ -178,15 +178,42 @@ class Quote(Base, TimestampMixin):
     source: Mapped[Source] = relationship(back_populates="quotes")
 
 
-class Conversation(Base):
+class Conversation(Base, TimestampMixin):
+    """A chat thread — the ChatGPT/Claude-style container that owns many messages.
+
+    One conversation per "New conversation" click, scoped to a (founder, user) pair.
+    Resetting context = starting a new conversation and only loading its messages.
+    """
+
     __tablename__ = "conversations"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     subject_id: Mapped[str] = mapped_column(ForeignKey("subjects.id"), nullable=False, index=True)
     user_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    title: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    messages: Mapped[list[Message]] = relationship(
+        back_populates="conversation",
+        cascade="all, delete-orphan",
+        order_by="Message.created_at",
+    )
+
+
+class Message(Base):
+    """A single turn within a Conversation (the old flat `conversations` table)."""
+
+    __tablename__ = "messages"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    conversation_id: Mapped[str] = mapped_column(ForeignKey("conversations.id"), nullable=False, index=True)
+    # Denormalized for convenience and to keep the migration non-destructive.
+    subject_id: Mapped[str] = mapped_column(ForeignKey("subjects.id"), nullable=False, index=True)
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     role: Mapped[str] = mapped_column(String(16), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False, index=True)
+
+    conversation: Mapped[Conversation] = relationship(back_populates="messages")
 
 
 class Dossier(Base, TimestampMixin):

@@ -142,6 +142,11 @@ Use this repository as a disciplined, branch-based engineering workspace. The de
 - Work cleanly inside the current checkout.
 - When the user already created the branch, use it rather than creating another one.
 
+### Testing
+
+- Keep verification to very simple smoke checks only (e.g. a single import/query check, a quick unit test).
+- Do NOT run extensive or end-to-end test suites, spin up the app to click through flows, or write elaborate verification harnesses — the user runs those themselves.
+
 ### Delivery Standard
 
 - The ideal finish state for a normal task is:

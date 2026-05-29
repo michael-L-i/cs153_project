@@ -999,7 +999,7 @@ textarea:focus-visible {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
   gap: clamp(28px, 5vw, 56px);
-  align-items: center;
+  align-items: start;
   padding-top: clamp(48px, 8vw, 88px);
   padding-bottom: clamp(36px, 6vw, 64px);
 }
@@ -1245,4 +1245,98 @@ textarea:focus-visible {
     grid-template-columns: 36px 1fr 20px;
     padding: 14px;
   }
+}
+
+/* ─── directory horizontal scroll + past newsletters (layout only) ─── */
+.dir-scroll {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  padding: 4px 4px 16px;
+  margin: 0 -4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.dir-card {
+  flex: 0 0 210px;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--paper-card);
+  box-shadow: 0 16px 42px -38px rgba(17, 24, 39, 0.5);
+  color: var(--ink);
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.dir-card:hover {
+  transform: translateY(-2px);
+  border-color: #CBD5E1;
+  box-shadow: 0 24px 50px -36px rgba(17, 24, 39, 0.55);
+}
+
+.dir-card .dir-name { font-size: 17px; }
+
+.dir-card .dir-meta {
+  flex: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.dir-card .dir-when { color: var(--ink-mute); }
+
+.nl-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.nl-row {
+  display: grid;
+  grid-template-columns: 1fr 28px;
+  align-items: center;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--paper-card);
+  margin-bottom: 10px;
+  box-shadow: 0 16px 42px -38px rgba(17, 24, 39, 0.5);
+  color: var(--ink);
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.nl-row:hover {
+  transform: translateY(-2px);
+  border-color: #CBD5E1;
+  box-shadow: 0 24px 50px -36px rgba(17, 24, 39, 0.55);
+}
+
+.nl-row:hover .dir-arrow { color: var(--accent); transform: translateX(3px); }
+
+.nl-id {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.nl-title {
+  font-family: var(--serif);
+  font-size: 19px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: var(--ink);
+}
+
+.nl-meta {
+  font-size: 13.5px;
+  color: var(--ink-mute);
 }

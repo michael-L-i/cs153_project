@@ -45,9 +45,21 @@
     <span class="count" data-live-count>—</span>
     <span>founders</span>
   </p>
-  <ul class="dir-list" data-dir-grid></ul>
+  <div class="dir-scroll" data-dir-grid></div>
   <p class="dir-empty" data-dir-empty hidden>
     No founders yet. Run <code>python -m newsletter.cli research "Founder Name"</code> to add one.
+  </p>
+</section>
+
+<section class="section section-rule" id="newsletters">
+  <p class="section-eyebrow">
+    <span>Past newsletters</span>
+    <span class="count" data-nl-count>—</span>
+    <span>issues</span>
+  </p>
+  <ul class="nl-list" data-nl-grid></ul>
+  <p class="dir-empty" data-nl-empty hidden>
+    No newsletters yet. Generate one with <code>POST /founders/&lt;id&gt;/newsletter</code>.
   </p>
 </section>
 
@@ -149,20 +161,33 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
     } catch { return ""; }
   };
 
-  const rowHTML = (founder, idx) => {
+  const esc = (s) =>
+    String(s ?? "").replace(/[&<>"']/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  const cardHTML = (founder, idx) => {
     const [bg, ink] = PALETTE[idx % PALETTE.length];
     const role = founder.company_name
       ? `${founder.company_name}${founder.notes ? " · " + founder.notes : ""}`
       : (founder.notes || "Founder dossier");
     return `
+      <a href="/founder.html?id=${encodeURIComponent(founder.id)}" class="dir-card">
+        <span class="dir-avatar" style="--mono-bg:${bg};--mono-ink:${ink}">${esc(initials(founder.name) || "··")}</span>
+        <span class="dir-name">${esc(founder.name)}</span>
+        <span class="dir-meta">${esc(role)}</span>
+        <span class="dir-when">${esc(fmtDate(founder.created_at))}</span>
+      </a>`;
+  };
+
+  const nlRowHTML = (nl) => {
+    const who = [nl.name, fmtDate(nl.generated_at)].filter(Boolean).join(" · ");
+    return `
       <li>
-        <a href="/founder.html?id=${encodeURIComponent(founder.id)}" class="dir-row">
-          <span class="dir-avatar" style="--mono-bg:${bg};--mono-ink:${ink}">${initials(founder.name) || "··"}</span>
-          <span class="dir-id">
-            <span class="dir-name">${founder.name}</span>
-            <span class="dir-meta">${role}</span>
+        <a href="/newsletter.html?slug=${encodeURIComponent(nl.slug)}" class="nl-row">
+          <span class="nl-id">
+            <span class="nl-title">${esc(nl.title || "Untitled")}</span>
+            <span class="nl-meta">${esc(who)}</span>
           </span>
-          <span class="dir-when">${fmtDate(founder.created_at)}</span>
           <span class="dir-arrow">→</span>
         </a>
       </li>`;
@@ -170,23 +195,42 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
   try {
     const res = await fetch("/founders");
-    if (!res.ok) return;
-    const data = await res.json();
-    const founders = data.founders || [];
-    const count = data.count ?? founders.length;
+    if (res.ok) {
+      const data = await res.json();
+      const founders = data.founders || [];
+      const count = data.count ?? founders.length;
 
-    const grid = document.querySelector("[data-dir-grid]");
-    const empty = document.querySelector("[data-dir-empty]");
-    if (grid) {
-      grid.innerHTML = founders.map((f, i) => rowHTML(f, i)).join("");
+      const grid = document.querySelector("[data-dir-grid]");
+      const empty = document.querySelector("[data-dir-empty]");
+      if (grid) grid.innerHTML = founders.map((f, i) => cardHTML(f, i)).join("");
+      if (empty) empty.hidden = founders.length > 0;
+
+      document.querySelectorAll("[data-live-count]").forEach((el) => {
+        el.textContent = String(count);
+      });
     }
-    if (empty) empty.hidden = founders.length > 0;
-
-    document.querySelectorAll("[data-live-count]").forEach((el) => {
-      el.textContent = String(count);
-    });
   } catch (err) {
     console.warn("founders fetch failed", err);
+  }
+
+  try {
+    const res = await fetch("/newsletters");
+    if (res.ok) {
+      const data = await res.json();
+      const letters = data.newsletters || [];
+      const count = data.count ?? letters.length;
+
+      const grid = document.querySelector("[data-nl-grid]");
+      const empty = document.querySelector("[data-nl-empty]");
+      if (grid) grid.innerHTML = letters.map(nlRowHTML).join("");
+      if (empty) empty.hidden = letters.length > 0;
+
+      document.querySelectorAll("[data-nl-count]").forEach((el) => {
+        el.textContent = String(count);
+      });
+    }
+  } catch (err) {
+    console.warn("newsletters fetch failed", err);
   }
 })();
 </script>

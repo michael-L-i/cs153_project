@@ -16,7 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from newsletter.config import get_settings
-from newsletter.models import Conversation, Subject
+from newsletter.models import Conversation, Message, Subject, utc_now
 from newsletter.services.vector import search as vector_search
 
 logger = logging.getLogger(__name__)
@@ -44,11 +44,11 @@ def _mem0():
     return MemoryClient(api_key=settings.mem0_api_key)
 
 
-def _recent_turns(session: Session, subject_id: str, user_id: str, limit: int = RECENT_TURNS) -> list[Conversation]:
+def _recent_turns(session: Session, conversation_id: str, limit: int = RECENT_TURNS) -> list[Message]:
     rows = session.scalars(
-        select(Conversation)
-        .where(Conversation.subject_id == subject_id, Conversation.user_id == user_id)
-        .order_by(Conversation.created_at.desc())
+        select(Message)
+        .where(Message.conversation_id == conversation_id)
+        .order_by(Message.created_at.desc())
         .limit(limit)
     ).all()
     return list(reversed(rows))
@@ -120,16 +120,68 @@ def _build_system_prompt(subject: Subject, chunks: list[str], memories: list[str
     return "\n".join(parts)
 
 
-def respond(session: Session, subject_id: str, message: str, user_id: str) -> str:
+def _title_from(message: str) -> str:
+    title = " ".join((message or "").split())
+    if len(title) > 60:
+        title = title[:57].rstrip() + "…"
+    return title or "New conversation"
+
+
+def _get_owned_conversation(session: Session, conversation_id: str, user_id: str) -> Conversation:
+    """Load a conversation, raising if it doesn't exist or isn't owned by user_id."""
+    convo = session.get(Conversation, conversation_id)
+    if convo is None:
+        raise ValueError(f"Conversation {conversation_id} not found")
+    if convo.user_id != user_id:
+        raise PermissionError("Conversation belongs to another user")
+    return convo
+
+
+def create_conversation(session: Session, subject_id: str, user_id: str, title: str | None = None) -> Conversation:
+    if session.get(Subject, subject_id) is None:
+        raise ValueError(f"Subject {subject_id} not found")
+    convo = Conversation(subject_id=subject_id, user_id=user_id, title=title)
+    session.add(convo)
+    session.commit()
+    session.refresh(convo)
+    return convo
+
+
+def list_conversations(session: Session, subject_id: str, user_id: str) -> list[Conversation]:
+    return list(
+        session.scalars(
+            select(Conversation)
+            .where(Conversation.subject_id == subject_id, Conversation.user_id == user_id)
+            .order_by(Conversation.updated_at.desc())
+        ).all()
+    )
+
+
+def rename_conversation(session: Session, conversation_id: str, user_id: str, title: str) -> Conversation:
+    convo = _get_owned_conversation(session, conversation_id, user_id)
+    convo.title = title.strip() or convo.title
+    session.commit()
+    session.refresh(convo)
+    return convo
+
+
+def delete_conversation(session: Session, conversation_id: str, user_id: str) -> None:
+    convo = _get_owned_conversation(session, conversation_id, user_id)
+    session.delete(convo)
+    session.commit()
+
+
+def respond(session: Session, conversation_id: str, message: str, user_id: str) -> str:
     settings = get_settings()
 
-    subject = session.get(Subject, subject_id)
+    convo = _get_owned_conversation(session, conversation_id, user_id)
+    subject = session.get(Subject, convo.subject_id)
     if subject is None:
-        raise ValueError(f"Subject {subject_id} not found")
+        raise ValueError(f"Subject {convo.subject_id} not found")
 
-    history = _recent_turns(session, subject_id, user_id)
-    chunks = _retrieve_context(subject_id, message)
-    memories = _recall_memories(user_id, subject_id, message)
+    history = _recent_turns(session, conversation_id)
+    chunks = _retrieve_context(subject.id, message)
+    memories = _recall_memories(user_id, subject.id, message)
     system = _build_system_prompt(subject, chunks, memories)
 
     messages = [{"role": c.role, "content": c.content} for c in history]
@@ -146,19 +198,24 @@ def respond(session: Session, subject_id: str, message: str, user_id: str) -> st
     if not reply:
         reply = "(no reply)"
 
-    session.add(Conversation(subject_id=subject_id, user_id=user_id, role="user", content=message))
-    session.add(Conversation(subject_id=subject_id, user_id=user_id, role="assistant", content=reply))
+    session.add(Message(conversation_id=conversation_id, subject_id=subject.id, user_id=user_id, role="user", content=message))
+    session.add(Message(conversation_id=conversation_id, subject_id=subject.id, user_id=user_id, role="assistant", content=reply))
+    # First user message names the conversation; bump updated_at so it sorts to the top.
+    if not convo.title:
+        convo.title = _title_from(message)
+    convo.updated_at = utc_now()
     session.commit()
 
-    _remember(user_id, subject_id, message, reply)
+    _remember(user_id, subject.id, message, reply)
     return reply
 
 
-def list_messages(session: Session, subject_id: str, user_id: str, limit: int = 200) -> list[Conversation]:
+def list_messages(session: Session, conversation_id: str, user_id: str, limit: int = 200) -> list[Message]:
+    _get_owned_conversation(session, conversation_id, user_id)
     rows = session.scalars(
-        select(Conversation)
-        .where(Conversation.subject_id == subject_id, Conversation.user_id == user_id)
-        .order_by(Conversation.created_at.desc())
+        select(Message)
+        .where(Message.conversation_id == conversation_id)
+        .order_by(Message.created_at.desc())
         .limit(limit)
     ).all()
     return list(reversed(rows))

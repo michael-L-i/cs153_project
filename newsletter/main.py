@@ -39,6 +39,14 @@ class ChatRequest(BaseModel):
     message: str
 
 
+class CreateConversationRequest(BaseModel):
+    title: str | None = None
+
+
+class RenameConversationRequest(BaseModel):
+    title: str
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     create_db_and_tables()
@@ -110,15 +118,52 @@ def create_app() -> FastAPI:
             "created_at": subject.created_at.isoformat(),
         }
 
-    @app.get("/founders/{subject_id}/messages")
-    def get_founder_messages(
+    def _serialize_conversation(c) -> dict:
+        return {
+            "id": c.id,
+            "subject_id": c.subject_id,
+            "title": c.title or "New conversation",
+            "created_at": c.created_at.isoformat(),
+            "updated_at": c.updated_at.isoformat(),
+        }
+
+    @app.get("/founders/{subject_id}/conversations")
+    def list_conversations(
         subject_id: str,
         session: Session = Depends(get_db_session),
         user: AuthUser = Depends(get_current_user),
     ) -> dict:
         if session.get(Subject, subject_id) is None:
             raise HTTPException(status_code=404, detail="Founder not found.")
-        rows = chat_service.list_messages(session, subject_id, user_id=user.id)
+        rows = chat_service.list_conversations(session, subject_id, user_id=user.id)
+        return {"conversations": [_serialize_conversation(c) for c in rows]}
+
+    @app.post("/founders/{subject_id}/conversations")
+    def create_conversation(
+        subject_id: str,
+        payload: CreateConversationRequest,
+        session: Session = Depends(get_db_session),
+        user: AuthUser = Depends(get_current_user),
+    ) -> dict:
+        try:
+            convo = chat_service.create_conversation(session, subject_id, user_id=user.id, title=payload.title)
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        return _serialize_conversation(convo)
+
+    @app.get("/founders/{subject_id}/conversations/{conversation_id}/messages")
+    def get_conversation_messages(
+        subject_id: str,
+        conversation_id: str,
+        session: Session = Depends(get_db_session),
+        user: AuthUser = Depends(get_current_user),
+    ) -> dict:
+        try:
+            rows = chat_service.list_messages(session, conversation_id, user_id=user.id)
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
         return {
             "messages": [
                 {"role": r.role, "content": r.content, "created_at": r.created_at.isoformat()}
@@ -126,23 +171,57 @@ def create_app() -> FastAPI:
             ]
         }
 
-    @app.post("/founders/{subject_id}/chat")
-    def post_founder_chat(
+    @app.post("/founders/{subject_id}/conversations/{conversation_id}/chat")
+    def post_conversation_chat(
         subject_id: str,
+        conversation_id: str,
         payload: ChatRequest,
         session: Session = Depends(get_db_session),
         user: AuthUser = Depends(get_current_user),
     ) -> dict:
-        if session.get(Subject, subject_id) is None:
-            raise HTTPException(status_code=404, detail="Founder not found.")
         message = (payload.message or "").strip()
         if not message:
             raise HTTPException(status_code=400, detail="Message is empty.")
         try:
-            reply = chat_service.respond(session, subject_id, message, user_id=user.id)
+            reply = chat_service.respond(session, conversation_id, message, user_id=user.id)
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
         except RuntimeError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         return {"reply": reply}
+
+    @app.patch("/founders/{subject_id}/conversations/{conversation_id}")
+    def rename_conversation(
+        subject_id: str,
+        conversation_id: str,
+        payload: RenameConversationRequest,
+        session: Session = Depends(get_db_session),
+        user: AuthUser = Depends(get_current_user),
+    ) -> dict:
+        try:
+            convo = chat_service.rename_conversation(session, conversation_id, user_id=user.id, title=payload.title)
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+        return _serialize_conversation(convo)
+
+    @app.delete("/founders/{subject_id}/conversations/{conversation_id}")
+    def delete_conversation(
+        subject_id: str,
+        conversation_id: str,
+        session: Session = Depends(get_db_session),
+        user: AuthUser = Depends(get_current_user),
+    ) -> dict:
+        try:
+            chat_service.delete_conversation(session, conversation_id, user_id=user.id)
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+        return {"deleted": conversation_id}
 
     @app.post("/founders/{subject_id}/newsletter")
     def post_founder_newsletter(
